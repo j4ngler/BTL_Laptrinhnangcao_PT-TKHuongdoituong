@@ -1,0 +1,260 @@
+package com.example.docmgmt.repo;
+
+import com.example.docmgmt.domain.Models.Document;
+import com.example.docmgmt.domain.Models.DocState;
+import com.example.docmgmt.domain.Models.AuditLog;
+
+import javax.sql.DataSource;
+import java.sql.*;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+
+public final class DocumentRepository {
+    private final DataSource ds;
+
+    public DocumentRepository(DataSource ds) {
+        this.ds = ds;
+    }
+
+    public void migrate() throws SQLException {
+        try (var c = ds.getConnection(); var st = c.createStatement()) {
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS documents (\n" +
+                    "id BIGSERIAL PRIMARY KEY,\n" +
+                    "title TEXT NOT NULL,\n" +
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n" +
+                    "latest_file_id TEXT,\n" +
+                    "state TEXT NOT NULL DEFAULT 'DRAFT',\n" +
+                    "classification TEXT,\n" +
+                    "security_level TEXT,\n" +
+                    "doc_number INT,\n" +
+                    "doc_year INT\n" +
+                    ")");
+
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS document_versions (\n" +
+                    "id BIGSERIAL PRIMARY KEY,\n" +
+                    "document_id BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,\n" +
+                    "file_id TEXT NOT NULL,\n" +
+                    "version_no INT NOT NULL,\n" +
+                    "created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n" +
+                    ")");
+
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS audit_logs (\n" +
+                    "id BIGSERIAL PRIMARY KEY,\n" +
+                    "document_id BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,\n" +
+                    "action TEXT NOT NULL,\n" +
+                    "actor TEXT NOT NULL,\n" +
+                    "at TIMESTAMPTZ NOT NULL DEFAULT now(),\n" +
+                    "note TEXT\n" +
+                    ")");
+        }
+    }
+
+    public long insert(String title, String latestFileId) throws SQLException {
+        String sql = "INSERT INTO documents(title, latest_file_id, state) VALUES(?, ?, 'DRAFT') RETURNING id";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, title);
+            ps.setString(2, latestFileId);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
+        }
+    }
+
+    public void addVersion(long docId, String fileId, int versionNo) throws SQLException {
+        String sql = "INSERT INTO document_versions(document_id, file_id, version_no) VALUES(?, ?, ?)";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, docId);
+            ps.setString(2, fileId);
+            ps.setInt(3, versionNo);
+            ps.executeUpdate();
+        }
+    }
+
+    public List<Document> list() throws SQLException {
+        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year FROM documents ORDER BY created_at DESC";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            try (var rs = ps.executeQuery()) {
+                List<Document> out = new ArrayList<>();
+                while (rs.next()) {
+                    long id = rs.getLong("id");
+                    String title = rs.getString("title");
+                    Timestamp ts = rs.getTimestamp("created_at");
+                    String fileId = rs.getString("latest_file_id");
+                    String state = rs.getString("state");
+                    String classification = rs.getString("classification");
+                    String securityLevel = rs.getString("security_level");
+                    Integer docNumber = rs.getObject("doc_number", Integer.class);
+                    Integer docYear = rs.getObject("doc_year", Integer.class);
+                    OffsetDateTime odt = ts.toInstant().atOffset(ZoneOffset.UTC);
+                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear));
+                }
+                return out;
+            }
+        }
+    }
+
+    public void updateLatestFileId(long id, String fileId) throws SQLException {
+        String sql = "UPDATE documents SET latest_file_id = ? WHERE id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, fileId);
+            ps.setLong(2, id);
+            ps.executeUpdate();
+        }
+    }
+
+    public void updateState(long id, DocState state) throws SQLException {
+        String sql = "UPDATE documents SET state = ? WHERE id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, state.name());
+            ps.setLong(2, id);
+            ps.executeUpdate();
+        }
+    }
+
+    public void setClassification(long id, String classification, String securityLevel) throws SQLException {
+        String sql = "UPDATE documents SET classification = ?, security_level = ? WHERE id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, classification);
+            ps.setString(2, securityLevel);
+            ps.setLong(3, id);
+            ps.executeUpdate();
+        }
+    }
+
+    public int nextVersionNo(long docId) throws SQLException {
+        String sql = "SELECT COALESCE(MAX(version_no), 0) + 1 FROM document_versions WHERE document_id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, docId);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        }
+    }
+
+    public void addAudit(long docId, String action, String actor, String note) throws SQLException {
+        String sql = "INSERT INTO audit_logs(document_id, action, actor, note) VALUES(?, ?, ?, ?)";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, docId);
+            ps.setString(2, action);
+            ps.setString(3, actor);
+            ps.setString(4, note);
+            ps.executeUpdate();
+        }
+    }
+
+    public Document getById(long id) throws SQLException {
+        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year FROM documents WHERE id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            try (var rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+                long did = rs.getLong("id");
+                String title = rs.getString("title");
+                Timestamp ts = rs.getTimestamp("created_at");
+                String fileId = rs.getString("latest_file_id");
+                String state = rs.getString("state");
+                String classification = rs.getString("classification");
+                String securityLevel = rs.getString("security_level");
+                Integer docNumber = rs.getObject("doc_number", Integer.class);
+                Integer docYear = rs.getObject("doc_year", Integer.class);
+                OffsetDateTime odt = ts.toInstant().atOffset(ZoneOffset.UTC);
+                return new Document(did, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear);
+            }
+        }
+    }
+
+    public List<Document> searchByTitle(String keyword) throws SQLException {
+        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year FROM documents WHERE title ILIKE ? ORDER BY created_at DESC";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, "%" + keyword + "%");
+            try (var rs = ps.executeQuery()) {
+                List<Document> out = new ArrayList<>();
+                while (rs.next()) {
+                    long id = rs.getLong("id");
+                    String title = rs.getString("title");
+                    Timestamp ts = rs.getTimestamp("created_at");
+                    String fileId = rs.getString("latest_file_id");
+                    String state = rs.getString("state");
+                    String classification = rs.getString("classification");
+                    String securityLevel = rs.getString("security_level");
+                    Integer docNumber = rs.getObject("doc_number", Integer.class);
+                    Integer docYear = rs.getObject("doc_year", Integer.class);
+                    OffsetDateTime odt = ts.toInstant().atOffset(ZoneOffset.UTC);
+                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear));
+                }
+                return out;
+            }
+        }
+    }
+
+    public String getFileIdByVersion(long docId, int versionNo) throws SQLException {
+        String sql = "SELECT file_id FROM document_versions WHERE document_id = ? AND version_no = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, docId);
+            ps.setInt(2, versionNo);
+            try (var rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+                return rs.getString(1);
+            }
+        }
+    }
+
+    public List<Integer> listVersions(long docId) throws SQLException {
+        String sql = "SELECT version_no FROM document_versions WHERE document_id = ? ORDER BY version_no";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, docId);
+            try (var rs = ps.executeQuery()) {
+                List<Integer> out = new ArrayList<>();
+                while (rs.next()) out.add(rs.getInt(1));
+                return out;
+            }
+        }
+    }
+
+    public int nextDocNumberForYear(int year) throws SQLException {
+        String sql = "SELECT COALESCE(MAX(doc_number), 0) + 1 FROM documents WHERE doc_year = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setInt(1, year);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
+            }
+        }
+    }
+
+    public void assignIssueNumber(long id, int number, int year) throws SQLException {
+        String sql = "UPDATE documents SET doc_number = ?, doc_year = ? WHERE id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setInt(1, number);
+            ps.setInt(2, year);
+            ps.setLong(3, id);
+            ps.executeUpdate();
+        }
+    }
+    
+    public List<AuditLog> getAuditLogs(long docId) throws SQLException {
+        String sql = "SELECT id, document_id, action, actor, at, note FROM audit_logs WHERE document_id = ? ORDER BY at";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, docId);
+            try (var rs = ps.executeQuery()) {
+                List<AuditLog> logs = new ArrayList<>();
+                while (rs.next()) {
+                    logs.add(new AuditLog(
+                        rs.getLong("id"),
+                        rs.getLong("document_id"),
+                        rs.getString("action"),
+                        rs.getString("actor"),
+                        rs.getObject("at", OffsetDateTime.class),
+                        rs.getString("note")
+                    ));
+                }
+                return logs;
+            }
+        }
+    }
+}
+
