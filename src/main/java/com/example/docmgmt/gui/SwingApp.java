@@ -13,7 +13,6 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
-import java.nio.file.Path;
 import java.util.List;
 
 public class SwingApp {
@@ -25,17 +24,33 @@ public class SwingApp {
     private final JTextField searchField;
 
     public SwingApp() throws Exception {
-        Config config = Config.fromEnv();
-        this.docService = new DocumentService(config);
-        var repo = new DocumentRepository(config.dataSource);
-        var ur = new UserRepository(config.dataSource); ur.migrate();
-        this.workflowService = new WorkflowService(repo, ur);
+        System.out.println("Đang khởi tạo SwingApp...");
+        
+        try {
+            System.out.println("Đang kết nối database...");
+            Config config = Config.fromEnv();
+            System.out.println("Database connected successfully");
+            
+            System.out.println("Đang khởi tạo services...");
+            this.docService = new DocumentService(config);
+            var repo = new DocumentRepository(config.dataSource);
+            var ur = new UserRepository(config.dataSource); 
+            ur.migrate();
+            this.workflowService = new WorkflowService(repo, ur);
+            System.out.println("Services initialized successfully");
+        } catch (Exception e) {
+            System.err.println("Lỗi khởi tạo database: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
 
         frame = new JFrame("Quản lý văn bản (Swing)");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.setSize(900, 520);
 
+        // Main button panel
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        
         JButton btnAdd = new JButton("Thêm");
         JButton btnExport = new JButton("Xuất");
         JButton btnRefresh = new JButton("Làm mới");
@@ -45,14 +60,29 @@ public class SwingApp {
         JButton btnIssue = new JButton("Issue");
         JButton btnArchive = new JButton("Archive");
         JButton btnDetails = new JButton("Chi tiết");
+        JButton btnDashboard = new JButton("Dashboard");
+        JButton btnDistribute = new JButton("Phân phối");
+        JButton btnRecall = new JButton("Thu hồi");
         searchField = new JTextField(20);
         JButton btnSearch = new JButton("Tìm");
-        top.add(btnAdd); top.add(btnExport); top.add(btnDetails); top.add(new JSeparator(SwingConstants.VERTICAL));
-        top.add(btnRefresh); top.add(new JSeparator(SwingConstants.VERTICAL));
-        top.add(btnSubmit); top.add(btnClassify); top.add(btnApprove); top.add(btnIssue); top.add(btnArchive);
-        top.add(new JSeparator(SwingConstants.VERTICAL)); top.add(searchField); top.add(btnSearch);
+        
+        // Add buttons to panel
+        top.add(btnAdd); 
+        top.add(btnExport); 
+        top.add(btnDetails); 
+        top.add(new JSeparator(SwingConstants.VERTICAL));
+        top.add(btnRefresh); 
+        top.add(new JSeparator(SwingConstants.VERTICAL));
+        top.add(btnSubmit); 
+        top.add(btnClassify); 
+        top.add(btnApprove); 
+        top.add(btnIssue); 
+        top.add(btnArchive);
+        top.add(new JSeparator(SwingConstants.VERTICAL)); 
+        top.add(searchField); 
+        top.add(btnSearch);
 
-        model = new DefaultTableModel(new Object[]{"ID","Tiêu đề","Trạng thái","Tạo lúc","Số/VB"}, 0) {
+        model = new DefaultTableModel(new Object[]{"ID","Tiêu đề","Trạng thái","Tạo lúc","Số/VB","Thời hạn","Độ ưu tiên","Phân công"}, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(model);
@@ -67,6 +97,9 @@ public class SwingApp {
         btnAdd.addActionListener(e -> doAdd());
         btnExport.addActionListener(e -> doExport());
         btnDetails.addActionListener(e -> doDetails());
+        btnDashboard.addActionListener(e -> doDashboard());
+        btnDistribute.addActionListener(e -> doDistribute());
+        btnRecall.addActionListener(e -> doRecall());
         btnSubmit.addActionListener(e -> doTransition("SUBMIT"));
         btnClassify.addActionListener(e -> doTransition("CLASSIFY"));
         btnApprove.addActionListener(e -> doTransition("APPROVE"));
@@ -81,10 +114,29 @@ public class SwingApp {
             List<Models.Document> docs = docService.listDocuments();
             model.setRowCount(0);
             for (var d : docs) {
-                String so = ""; // sẽ load số từ DB khi cần; hiển thị trống nếu chưa ban hành
-                model.addRow(new Object[]{ d.id(), d.title(), d.state().name(), d.createdAt().toString(), so });
+                String docNumber = d.docNumber() != null ? d.docNumber() + "/" + d.docYear() : "";
+                String deadline = d.deadline() != null ? d.deadline().toString().substring(0, 16) : "";
+                String priority = d.priority() != null ? getPriorityDisplayName(d.priority()) : "Thường";
+                String assignedTo = d.assignedTo() != null ? d.assignedTo() : "Chưa phân công";
+                
+                model.addRow(new Object[]{
+                    d.id(), d.title(), d.state().name(), 
+                    d.createdAt().toString().substring(0, 19), docNumber,
+                    deadline, priority, assignedTo
+                });
             }
         } catch (Exception ex) { showError(ex); }
+    }
+
+    private String getPriorityDisplayName(String priority) {
+        if (priority == null) return "Thường";
+        return switch (priority) {
+            case "NORMAL" -> "Thường";
+            case "URGENT" -> "Khẩn";
+            case "EMERGENCY" -> "Thượng khẩn";
+            case "FIRE" -> "Hỏa tốc";
+            default -> priority;
+        };
     }
 
     private void doSearch() {
@@ -93,8 +145,16 @@ public class SwingApp {
             List<Models.Document> docs = (kw == null || kw.isBlank()) ? docService.listDocuments() : docService.searchByTitle(kw);
             model.setRowCount(0);
             for (var d : docs) {
-                String so = "";
-                model.addRow(new Object[]{ d.id(), d.title(), d.state().name(), d.createdAt().toString(), so });
+                String docNumber = d.docNumber() != null ? d.docNumber() + "/" + d.docYear() : "";
+                String deadline = d.deadline() != null ? d.deadline().toString().substring(0, 16) : "";
+                String priority = d.priority() != null ? getPriorityDisplayName(d.priority()) : "Thường";
+                String assignedTo = d.assignedTo() != null ? d.assignedTo() : "Chưa phân công";
+                
+                model.addRow(new Object[]{
+                    d.id(), d.title(), d.state().name(), 
+                    d.createdAt().toString().substring(0, 19), docNumber,
+                    deadline, priority, assignedTo
+                });
             }
         } catch (Exception ex) { showError(ex); }
     }
@@ -151,10 +211,23 @@ public class SwingApp {
             // Hiển thị dialog chi tiết
             showDetailsDialog(doc, logs);
             
-        } catch (Exception ex) { 
-            showError(ex); 
+        } catch (Exception ex) {
+            showError(ex);
         }
     }
+
+    private void doDashboard() {
+        info("Tính năng Dashboard đang được phát triển");
+    }
+
+    private void doDistribute() {
+        info("Tính năng phân phối văn bản đang được phát triển");
+    }
+
+    private void doRecall() {
+        info("Tính năng thu hồi văn bản đang được phát triển");
+    }
+
 
     private void doTransition(String action) {
         Long id = selectedId(); if (id == null) { info("Chọn một dòng trước"); return; }
@@ -631,10 +704,11 @@ public class SwingApp {
     public static void main(String[] args) throws Exception {
         SwingUtilities.invokeLater(() -> {
             try {
-                new SwingApp().show();
+                SwingApp app = new SwingApp();
+                app.show();
             } catch (Exception e) {
                 e.printStackTrace();
-                JOptionPane.showMessageDialog(null, e.getMessage());
+                JOptionPane.showMessageDialog(null, "Lỗi khởi động GUI: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
         });
     }

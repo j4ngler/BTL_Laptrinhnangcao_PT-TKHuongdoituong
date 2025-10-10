@@ -9,6 +9,8 @@ import com.example.docmgmt.domain.Models.Role;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import javax.swing.SwingUtilities;
+import javax.swing.JOptionPane;
 
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
@@ -55,6 +57,9 @@ public class App implements Callable<Integer> {
     boolean listUsers;
     @Option(names = {"--reset-db"}, description = "Reset database (xóa và tạo lại tables)")
     boolean resetDb;
+    
+    @Option(names = {"--gui"}, description = "Chạy giao diện desktop Swing")
+    boolean gui;
 
     public static void main(String[] args) {
         int exit = new CommandLine(new App()).execute(args);
@@ -63,6 +68,36 @@ public class App implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        if (gui) {
+            System.out.println("Đang khởi động GUI...");
+            
+            // Launch Swing GUI with database connection
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    System.out.println("Tạo SwingApp instance...");
+                    com.example.docmgmt.gui.SwingApp app = new com.example.docmgmt.gui.SwingApp();
+                    System.out.println("SwingApp created successfully, showing window...");
+                    app.show();
+                    System.out.println("GUI window should be visible now");
+                } catch (Exception e) {
+                    System.err.println("Lỗi khởi động GUI: " + e.getMessage());
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "Lỗi khởi động GUI: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    System.exit(1);
+                }
+            });
+            
+            // Keep the main thread alive
+            try {
+                System.out.println("Main thread waiting...");
+                Thread.currentThread().join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.out.println("Main thread interrupted");
+            }
+            return 0;
+        }
+        
         Config config = Config.fromEnv();
         try (var svc = new DocumentService(config)) {
             if (addFile != null) {

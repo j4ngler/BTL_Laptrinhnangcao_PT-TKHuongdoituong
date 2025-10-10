@@ -64,6 +64,10 @@ public final class DocumentService implements AutoCloseable {
         return docRepo.getAuditLogs(docId);
     }
 
+    public javax.sql.DataSource getDataSource() {
+        return docRepo.getDataSource();
+    }
+
     @Override
     public void close() {
         // no-op, resources managed externally

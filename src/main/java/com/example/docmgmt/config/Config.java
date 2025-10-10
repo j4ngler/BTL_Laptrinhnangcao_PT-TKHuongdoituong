@@ -23,7 +23,7 @@ public final class Config implements AutoCloseable {
     public static Config fromEnv() {
         String pgUrl = getenv("PG_URL", "jdbc:postgresql://localhost:5432/docmgmt");
         String pgUser = getenv("PG_USER", "postgres");
-        String pgPass = getenv("PG_PASS", "postgres");
+        String pgPass = getenv("PG_PASS", "794613");
 
         HikariConfig hc = new HikariConfig();
         hc.setJdbcUrl(pgUrl);

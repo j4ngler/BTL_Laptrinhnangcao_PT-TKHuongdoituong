@@ -18,6 +18,10 @@ public final class DocumentRepository {
         this.ds = ds;
     }
 
+    public DataSource getDataSource() {
+        return ds;
+    }
+
     public void migrate() throws SQLException {
         try (var c = ds.getConnection(); var st = c.createStatement()) {
             st.executeUpdate("CREATE TABLE IF NOT EXISTS documents (\n" +
@@ -29,7 +33,10 @@ public final class DocumentRepository {
                     "classification TEXT,\n" +
                     "security_level TEXT,\n" +
                     "doc_number INT,\n" +
-                    "doc_year INT\n" +
+                    "doc_year INT,\n" +
+                    "deadline TIMESTAMPTZ,\n" +
+                    "assigned_to TEXT,\n" +
+                    "priority TEXT DEFAULT 'NORMAL'\n" +
                     ")");
 
             st.executeUpdate("CREATE TABLE IF NOT EXISTS document_versions (\n" +
@@ -63,6 +70,21 @@ public final class DocumentRepository {
         }
     }
 
+    public long insert(String title, String latestFileId, OffsetDateTime deadline, String assignedTo, String priority) throws SQLException {
+        String sql = "INSERT INTO documents(title, latest_file_id, deadline, assigned_to, priority, state) VALUES(?, ?, ?, ?, ?, 'DRAFT') RETURNING id";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, title);
+            ps.setString(2, latestFileId);
+            ps.setObject(3, deadline);
+            ps.setString(4, assignedTo);
+            ps.setString(5, priority);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
+        }
+    }
+
     public void addVersion(long docId, String fileId, int versionNo) throws SQLException {
         String sql = "INSERT INTO document_versions(document_id, file_id, version_no) VALUES(?, ?, ?)";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
@@ -74,7 +96,7 @@ public final class DocumentRepository {
     }
 
     public List<Document> list() throws SQLException {
-        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year FROM documents ORDER BY created_at DESC";
+        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year, deadline, assigned_to, priority FROM documents ORDER BY created_at DESC";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             try (var rs = ps.executeQuery()) {
                 List<Document> out = new ArrayList<>();
@@ -88,8 +110,12 @@ public final class DocumentRepository {
                     String securityLevel = rs.getString("security_level");
                     Integer docNumber = rs.getObject("doc_number", Integer.class);
                     Integer docYear = rs.getObject("doc_year", Integer.class);
+                    Timestamp deadlineTs = rs.getTimestamp("deadline");
+                    OffsetDateTime deadline = deadlineTs != null ? deadlineTs.toInstant().atOffset(ZoneOffset.UTC) : null;
+                    String assignedTo = rs.getString("assigned_to");
+                    String priority = rs.getString("priority");
                     OffsetDateTime odt = ts.toInstant().atOffset(ZoneOffset.UTC);
-                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear));
+                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority));
                 }
                 return out;
             }
@@ -147,7 +173,7 @@ public final class DocumentRepository {
     }
 
     public Document getById(long id) throws SQLException {
-        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year FROM documents WHERE id = ?";
+        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year, deadline, assigned_to, priority FROM documents WHERE id = ?";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (var rs = ps.executeQuery()) {
@@ -162,13 +188,17 @@ public final class DocumentRepository {
                 Integer docNumber = rs.getObject("doc_number", Integer.class);
                 Integer docYear = rs.getObject("doc_year", Integer.class);
                 OffsetDateTime odt = ts.toInstant().atOffset(ZoneOffset.UTC);
-                return new Document(did, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear);
+                Timestamp deadlineTs = rs.getTimestamp("deadline");
+                OffsetDateTime deadline = deadlineTs != null ? deadlineTs.toInstant().atOffset(ZoneOffset.UTC) : null;
+                String assignedTo = rs.getString("assigned_to");
+                String priority = rs.getString("priority");
+                return new Document(did, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority);
             }
         }
     }
 
     public List<Document> searchByTitle(String keyword) throws SQLException {
-        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year FROM documents WHERE title ILIKE ? ORDER BY created_at DESC";
+        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year, deadline, assigned_to, priority FROM documents WHERE title ILIKE ? ORDER BY created_at DESC";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             ps.setString(1, "%" + keyword + "%");
             try (var rs = ps.executeQuery()) {
@@ -184,7 +214,11 @@ public final class DocumentRepository {
                     Integer docNumber = rs.getObject("doc_number", Integer.class);
                     Integer docYear = rs.getObject("doc_year", Integer.class);
                     OffsetDateTime odt = ts.toInstant().atOffset(ZoneOffset.UTC);
-                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear));
+                    Timestamp deadlineTs = rs.getTimestamp("deadline");
+                    OffsetDateTime deadline = deadlineTs != null ? deadlineTs.toInstant().atOffset(ZoneOffset.UTC) : null;
+                    String assignedTo = rs.getString("assigned_to");
+                    String priority = rs.getString("priority");
+                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority));
                 }
                 return out;
             }
@@ -255,6 +289,21 @@ public final class DocumentRepository {
                 return logs;
             }
         }
+    }
+
+    public void updateDocumentAssignment(long id, String assignedTo, String priority, OffsetDateTime deadline, String instructions) throws SQLException {
+        String sql = "UPDATE documents SET assigned_to = ?, priority = ?, deadline = ? WHERE id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, assignedTo);
+            ps.setString(2, priority);
+            ps.setObject(3, deadline);
+            ps.setLong(4, id);
+            ps.executeUpdate();
+        }
+        
+        // Add audit log
+        addAudit(id, "ASSIGN", "System", "Phân phối cho: " + assignedTo + 
+                (instructions != null && !instructions.isEmpty() ? " | Hướng dẫn: " + instructions : ""));
     }
 }
 
