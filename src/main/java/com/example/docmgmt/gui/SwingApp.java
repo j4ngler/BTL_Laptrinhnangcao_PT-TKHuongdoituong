@@ -52,7 +52,9 @@ public class SwingApp {
                 var gaRepo = new com.example.docmgmt.repo.GmailAccountRepository(config.dataSource);
                 gaRepo.migrate();
                 this.autoSyncManager = new com.example.docmgmt.service.SimpleMultiGmailManager(repo, gridRepo, gaRepo, 5, 5, "is:unread");
-                if (!gaRepo.listActive().isEmpty()) {
+                // Không tự động chạy auto-sync trừ khi bật qua biến môi trường DM_AUTOSYNC=true
+                String autoEnv = System.getenv("DM_AUTOSYNC");
+                if ("true".equalsIgnoreCase(autoEnv) && !gaRepo.listActive().isEmpty()) {
                     this.autoSyncManager.startAutoSync();
                 }
             } catch (Exception ex) {
@@ -153,21 +155,24 @@ public class SwingApp {
         menuActions.add(miSearch);
         menuBar.add(menuActions);
         
-        JMenu menuWorkflow = new JMenu("Workflow");
+        JMenu menuWorkflow = new JMenu("Quy trình");
         if (currentRole == Role.VAN_THU) {
-            JMenuItem miDangKy = new JMenuItem("Đăng ký");
+            JMenuItem miTiepNhan = new JMenuItem("1) Tiếp nhận");
+            JMenuItem miDangKy = new JMenuItem("2) Đăng ký");
+            miTiepNhan.addActionListener(e -> doTiepNhan());
             miDangKy.addActionListener(e -> doWorkflowAction("DANG_KY"));
+            menuWorkflow.add(miTiepNhan);
             menuWorkflow.add(miDangKy);
         } else if (currentRole == Role.LANH_DAO) {
-            JMenuItem miXemXet = new JMenuItem("Xem xét");
-            JMenuItem miPhanCong = new JMenuItem("Phân công");
+            JMenuItem miXemXet = new JMenuItem("3) Trình & chuyển giao / Xem xét");
+            JMenuItem miPhanCong = new JMenuItem("4) Chỉ đạo / Phân công xử lý");
             miXemXet.addActionListener(e -> doWorkflowAction("XEM_XET"));
             miPhanCong.addActionListener(e -> doWorkflowAction("PHAN_CONG"));
             menuWorkflow.add(miXemXet);
             menuWorkflow.add(miPhanCong);
         } else if (currentRole == Role.CAN_BO_CHUYEN_MON) {
-            JMenuItem miBatDau = new JMenuItem("Bắt đầu xử lý");
-            JMenuItem miHoanThanh = new JMenuItem("Hoàn thành");
+            JMenuItem miBatDau = new JMenuItem("5) Thực hiện xử lý");
+            JMenuItem miHoanThanh = new JMenuItem("6) Xét duyệt/Hoàn tất");
             miBatDau.addActionListener(e -> doWorkflowAction("BAT_DAU_XU_LY"));
             miHoanThanh.addActionListener(e -> doWorkflowAction("HOAN_THANH"));
             menuWorkflow.add(miBatDau);
@@ -314,6 +319,23 @@ public class SwingApp {
             
         } catch (Exception ex) {
             showError(ex);
+        }
+    }
+
+    private void doTiepNhan() {
+        Long id = selectedId(); if (id == null) { info("Chọn một dòng trước"); return; }
+        JTextField actorField = new JTextField(authService.getCurrentUser().username(), 15);
+        JTextField noteField = new JTextField(20);
+        JPanel p = new JPanel(new GridLayout(2,2,6,6));
+        p.add(new JLabel("Người thực hiện:")); p.add(actorField);
+        p.add(new JLabel("Ghi chú:")); p.add(noteField);
+        int ok = JOptionPane.showConfirmDialog(frame, p, "Tiếp nhận văn bản", JOptionPane.OK_CANCEL_OPTION);
+        if (ok == JOptionPane.OK_OPTION) {
+            try {
+                workflowService.tiepNhan(id, actorField.getText().trim(), noteField.getText().trim());
+                reload();
+                info("Đã tiếp nhận văn bản");
+            } catch (Exception ex) { showError(ex); }
         }
     }
 

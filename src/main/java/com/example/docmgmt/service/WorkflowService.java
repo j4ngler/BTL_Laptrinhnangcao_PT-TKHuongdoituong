@@ -25,6 +25,16 @@ public final class WorkflowService {
     }
 
     /**
+     * Bước 1: Văn thư tiếp nhận văn bản (ghi nhận audit, không đổi trạng thái)
+     */
+    public void tiepNhan(long id, String actor, String note) throws SQLException {
+        var d = repo.getById(id);
+        if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
+        ensureRole(actor, Role.VAN_THU);
+        repo.addAudit(id, "TIEP_NHAN", actor, note);
+    }
+
+    /**
      * Văn thư đăng ký văn bản (từ TIEP_NHAN -> DANG_KY)
      */
     public void dangKy(long id, String actor, String note) throws SQLException {

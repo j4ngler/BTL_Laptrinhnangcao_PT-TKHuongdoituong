@@ -48,6 +48,10 @@ public class SimpleGmailAPIService {
      * Fetch emails với query filter
      */
     public int fetchEmails(String query) throws Exception {
+        // Chế độ hạn chế tạo dữ liệu khi DM_GENERATE_MOCK=false
+        if ("false".equalsIgnoreCase(System.getenv("DM_GENERATE_MOCK"))) {
+            return 0;
+        }
         System.out.println("Fetching emails from " + email + " with query: " + query);
         
         // TODO: Implement Gmail API integration
