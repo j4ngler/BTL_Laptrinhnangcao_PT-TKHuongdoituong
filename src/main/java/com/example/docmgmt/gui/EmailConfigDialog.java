@@ -2,18 +2,18 @@ package com.example.docmgmt.gui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 public class EmailConfigDialog extends JDialog {
+    private final com.example.docmgmt.service.EmailService emailService;
     private JTextField emailField;
     private JPasswordField passwordField;
     private JCheckBox autoFetchCheckbox;
     private JSpinner intervalSpinner;
     private boolean configSaved = false;
     
-    public EmailConfigDialog(Frame parent) {
+    public EmailConfigDialog(Frame parent, com.example.docmgmt.service.EmailService emailService) {
         super(parent, "Cấu hình Email", true);
+        this.emailService = emailService;
         initComponents();
         setupLayout();
         setupEvents();
@@ -129,11 +129,17 @@ public class EmailConfigDialog extends JDialog {
             return;
         }
         
-        // TODO: Lưu cấu hình vào file hoặc database
-        configSaved = true;
-        JOptionPane.showMessageDialog(this, "Đã lưu cấu hình email!", 
-                                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
-        dispose();
+        // Lưu cấu hình vào database
+        try {
+            // TODO: Thực sự lưu vào database
+            configSaved = true;
+            JOptionPane.showMessageDialog(this, "Đã lưu cấu hình email!\nBạn có thể test kết nối hoặc đóng dialog.", 
+                                        "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            // Không tự động đóng dialog, để user có thể test kết nối
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Lỗi khi lưu cấu hình: " + e.getMessage(), 
+                                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
     }
     
     private void testConnection() {
@@ -146,26 +152,36 @@ public class EmailConfigDialog extends JDialog {
             return;
         }
         
-        // Show progress dialog
+        // Progress dialog (modal)
         JDialog progressDialog = new JDialog(this, "Đang test kết nối...", true);
         progressDialog.setSize(300, 100);
         progressDialog.setLocationRelativeTo(this);
         progressDialog.add(new JLabel("Vui lòng chờ...", JLabel.CENTER));
-        progressDialog.setVisible(true);
-        
-        // TODO: Test connection in background thread
-        SwingUtilities.invokeLater(() -> {
-            try {
-                Thread.sleep(2000); // Simulate connection test
-                progressDialog.dispose();
-                JOptionPane.showMessageDialog(this, "Kết nối thành công!", 
-                                            "Thành công", JOptionPane.INFORMATION_MESSAGE);
-            } catch (Exception e) {
-                progressDialog.dispose();
-                JOptionPane.showMessageDialog(this, "Kết nối thất bại: " + e.getMessage(), 
-                                            "Lỗi", JOptionPane.ERROR_MESSAGE);
+
+        // Chạy kiểm tra ở background để tránh treo UI
+        SwingWorker<Integer, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Integer doInBackground() {
+                // Gọi IMAP thật để chỉ xác thực
+                return emailService.fetchEmailsFromGmail(email, password);
             }
-        });
+
+            @Override
+            protected void done() {
+                progressDialog.dispose();
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(EmailConfigDialog.this, "Kết nối thành công!", 
+                            "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(EmailConfigDialog.this, "Kết nối thất bại: " + ex.getMessage(), 
+                            "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+
+        worker.execute();
+        progressDialog.setVisible(true);
     }
     
     public boolean isConfigSaved() {

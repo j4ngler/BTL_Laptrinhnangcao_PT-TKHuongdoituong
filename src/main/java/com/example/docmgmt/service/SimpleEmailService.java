@@ -25,6 +25,10 @@ public class SimpleEmailService {
      * Mock fetch emails from Gmail
      */
     public int fetchEmailsFromGmail(String email, String password) {
+        // Không tạo dữ liệu giả nếu đặt biến môi trường DM_GENERATE_MOCK=false
+        if ("false".equalsIgnoreCase(System.getenv("DM_GENERATE_MOCK"))) {
+            return 0;
+        }
         System.out.println("Mock fetching emails from " + email + "...");
         
         // Mock email data for testing

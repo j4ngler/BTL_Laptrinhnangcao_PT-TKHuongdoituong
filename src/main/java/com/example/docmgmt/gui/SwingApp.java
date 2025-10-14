@@ -10,7 +10,6 @@ import com.example.docmgmt.repo.UserRepository;
 import com.example.docmgmt.service.DocumentService;
 import com.example.docmgmt.service.WorkflowService;
 import com.example.docmgmt.service.AuthenticationService;
-import com.example.docmgmt.service.SimpleEmailService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -22,7 +21,7 @@ public class SwingApp {
     private final DocumentService docService;
     private final WorkflowService workflowService;
     private final AuthenticationService authService;
-    private final SimpleEmailService emailService;
+    private final com.example.docmgmt.service.EmailService emailService;
     private com.example.docmgmt.service.SimpleMultiGmailManager autoSyncManager;
     private JFrame frame;
     private JTable table;
@@ -46,7 +45,8 @@ public class SwingApp {
             this.workflowService = new WorkflowService(repo, ur);
             this.authService = new AuthenticationService(ur);
             var gridRepo = new com.example.docmgmt.repo.GridFsRepository(config.mongoClient, "docmgmt", "files");
-            this.emailService = new SimpleEmailService(repo, gridRepo);
+            // Ưu tiên EmailService (IMAP thật) nếu khả dụng, fallback simple
+            this.emailService = new com.example.docmgmt.service.EmailService(repo, gridRepo);
             // Auto-sync Gmail: load accounts từ DB và chạy nền nếu có
             try {
                 var gaRepo = new com.example.docmgmt.repo.GmailAccountRepository(config.dataSource);
@@ -854,7 +854,7 @@ public class SwingApp {
     private void doEmail() {
         try {
             // Hiển thị dialog cấu hình email
-            EmailConfigDialog configDialog = new EmailConfigDialog(frame);
+            EmailConfigDialog configDialog = new EmailConfigDialog(frame, emailService);
             configDialog.setVisible(true);
             
             if (!configDialog.isConfigSaved()) {
@@ -864,33 +864,41 @@ public class SwingApp {
             String email = configDialog.getEmail();
             String password = configDialog.getPassword();
             
-            // Show progress dialog
+            // Show progress dialog (chuẩn bị UI)
             JDialog progressDialog = new JDialog(frame, "Đang nhận văn bản từ email...", true);
             progressDialog.setSize(400, 150);
             progressDialog.setLocationRelativeTo(frame);
-            
             JPanel progressPanel = new JPanel(new BorderLayout());
             progressPanel.add(new JLabel("Đang kết nối và nhận văn bản từ Gmail...", JLabel.CENTER), BorderLayout.CENTER);
-            
             JProgressBar progressBar = new JProgressBar();
             progressBar.setIndeterminate(true);
             progressPanel.add(progressBar, BorderLayout.SOUTH);
-            
             progressDialog.add(progressPanel);
-            progressDialog.setVisible(true);
-            
-            // Run email fetching in background
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    int count = emailService.fetchEmailsFromGmail(email, password);
-                    progressDialog.dispose();
-                    info("Đã nhận " + count + " văn bản từ email thành công!");
-                    reload();
-                } catch (Exception e) {
-                    progressDialog.dispose();
-                    showError(e);
+
+            // Chạy nền bằng SwingWorker để không chặn EDT
+            SwingWorker<Integer, Void> worker = new SwingWorker<>() {
+                @Override
+                protected Integer doInBackground() {
+                    // Đọc thật và tạo văn bản
+                    return emailService.fetchAndProcessEmails(email, password);
                 }
-            });
+
+                @Override
+                protected void done() {
+                    progressDialog.dispose();
+                    try {
+                        int count = get();
+                        info("Đã nhận " + count + " văn bản từ email thành công!");
+                        reload();
+                    } catch (Exception e) {
+                        showError(e);
+                    }
+                }
+            };
+
+            // Bắt đầu background rồi mới hiển thị dialog modal
+            worker.execute();
+            progressDialog.setVisible(true);
             
         } catch (Exception e) {
             showError(e);

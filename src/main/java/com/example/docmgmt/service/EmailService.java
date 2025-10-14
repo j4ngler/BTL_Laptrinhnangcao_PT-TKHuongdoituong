@@ -1,122 +1,136 @@
 package com.example.docmgmt.service;
 
-// import com.example.docmgmt.domain.Models.Document;
-// import com.example.docmgmt.domain.Models.DocState;
-// import com.example.docmgmt.repo.DocumentRepository;
-// import com.example.docmgmt.repo.GridFsRepository;
+import com.example.docmgmt.repo.DocumentRepository;
+import com.example.docmgmt.repo.GridFsRepository;
 
-// import java.io.ByteArrayInputStream;
-// import java.time.OffsetDateTime;
+import jakarta.mail.*;
+import jakarta.mail.Flags.Flag;
+import jakarta.mail.search.AndTerm;
+import jakarta.mail.search.FlagTerm;
+import jakarta.mail.search.SearchTerm;
+import jakarta.mail.search.SubjectTerm;
+
+import java.io.InputStream;
+import java.time.OffsetDateTime;
+import java.util.Properties;
 
 /**
- * EmailService - DISABLED DUE TO JAVAX.MAIL DEPENDENCY ISSUES
- * 
- * This service is disabled because javax.mail dependencies are not properly resolved.
- * Please use SimpleEmailService instead for testing and development.
+ * EmailService (IMAP thật): đọc thư Unread, tải file đính kèm, lưu GridFS và tạo văn bản.
+ * An toàn: nếu set DM_EMAIL_SUBJECT_PREFIX, chỉ nhận thư có tiêu đề chứa prefix này.
  */
 public class EmailService {
-    @SuppressWarnings("unused")
-    private final Object docRepo;
-    @SuppressWarnings("unused")
-    private final Object gridFsRepo;
-    @SuppressWarnings("unused")
-    private final String gmailHost = "imap.gmail.com";
-    @SuppressWarnings("unused")
-    private final String gmailPort = "993";
+    private final DocumentRepository docRepo;
+    private final GridFsRepository gridFsRepo;
 
-    public EmailService(Object docRepo, Object gridFsRepo) {
+    public EmailService(DocumentRepository docRepo, GridFsRepository gridFsRepo) {
         this.docRepo = docRepo;
         this.gridFsRepo = gridFsRepo;
     }
 
-    /**
-     * Kết nối và lấy email từ Gmail - DISABLED
-     */
-    public int fetchEmailsFromGmail(String email, String password) {
-        System.out.println("EmailService.fetchEmailsFromGmail is disabled due to javax.mail dependency issues");
-        System.out.println("Please use SimpleEmailService instead for testing");
-        return 0;
+    public int fetchEmailsFromGmail(String email, String appPassword) {
+        try {
+            Properties props = new Properties();
+            props.put("mail.store.protocol", "imaps");
+            props.put("mail.imaps.host", "imap.gmail.com");
+            props.put("mail.imaps.port", "993");
+            props.put("mail.imaps.ssl.enable", "true");
+            props.put("mail.imaps.connectiontimeout", "5000");  // 5 giây
+            props.put("mail.imaps.timeout", "10000");           // 10 giây
+            props.put("mail.imaps.readtimeout", "10000");       // 10 giây
+
+            Session session = Session.getInstance(props);
+            try (Store store = session.getStore("imaps")) {
+                // Test connection với timeout ngắn
+                store.connect("imap.gmail.com", email, appPassword);
+                
+                // Chỉ test kết nối, không đọc email
+                if (!store.isConnected()) {
+                    throw new RuntimeException("Không thể kết nối đến Gmail IMAP");
+                }
+                
+                return 0; // Chỉ test kết nối, không xử lý email
+            }
+        } catch (AuthenticationFailedException ex) {
+            throw new RuntimeException("Đăng nhập thất bại: kiểm tra App Password hoặc 2FA", ex);
+        } catch (Exception ex) {
+            throw new RuntimeException("Lỗi kết nối: " + ex.getMessage(), ex);
+        }
     }
 
-    /**
-     * Xử lý từng email - DISABLED
-     */
-    @SuppressWarnings("unused")
-    private boolean processEmail(Object message) {
-        System.out.println("EmailService.processEmail is disabled due to javax.mail dependency issues");
-        return false;
+    public int fetchAndProcessEmails(String email, String appPassword) {
+        try {
+            Properties props = new Properties();
+            props.put("mail.store.protocol", "imaps");
+            props.put("mail.imaps.host", "imap.gmail.com");
+            props.put("mail.imaps.port", "993");
+            props.put("mail.imaps.ssl.enable", "true");
+            props.put("mail.imaps.connectiontimeout", "10000");
+            props.put("mail.imaps.timeout", "20000");
+
+            Session session = Session.getInstance(props);
+            try (Store store = session.getStore("imaps")) {
+                store.connect("imap.gmail.com", email, appPassword);
+                try (Folder inbox = store.getFolder("INBOX")) {
+                    inbox.open(Folder.READ_WRITE);
+
+                    // Unread filter
+                    SearchTerm unread = new FlagTerm(new Flags(Flag.SEEN), false);
+                    String prefix = System.getenv("DM_EMAIL_SUBJECT_PREFIX");
+                    SearchTerm term = unread;
+                    if (prefix != null && !prefix.isBlank()) {
+                        term = new AndTerm(unread, new SubjectTerm(prefix));
+                    }
+
+                    Message[] messages = inbox.search(term);
+                    int processed = 0;
+                    for (Message m : messages) {
+                        String subject = safeSubject(m);
+                        String fileId = saveFirstAttachment(m);
+                        if (fileId == null) {
+                            // Không có file đính kèm → bỏ qua nhưng đánh dấu đã đọc để không lặp
+                            m.setFlag(Flag.SEEN, true);
+                            continue;
+                        }
+
+                        // Tạo văn bản ở trạng thái mặc định (TIEP_NHAN)
+                        docRepo.insert(subject != null ? subject : "Văn bản từ email", fileId);
+                        processed++;
+
+                        // Đánh dấu đã đọc
+                        m.setFlag(Flag.SEEN, true);
+                    }
+                    return processed;
+                }
+            }
+        } catch (AuthenticationFailedException ex) {
+            throw new RuntimeException("Đăng nhập thất bại: kiểm tra App Password hoặc 2FA", ex);
+        } catch (Exception ex) {
+            throw new RuntimeException("Lỗi nhận email: " + ex.getMessage(), ex);
+        }
     }
 
-    /**
-     * Kiểm tra email có phải là văn bản đến không - DISABLED
-     */
-    @SuppressWarnings("unused")
-    private boolean isDocumentEmail(String subject, String from) {
-        System.out.println("EmailService.isDocumentEmail is disabled due to javax.mail dependency issues");
-        return false;
+    private String safeSubject(Message m) {
+        try { return m.getSubject(); } catch (Exception ignore) { return null; }
     }
 
-    /**
-     * Tạo document từ email - DISABLED
-     */
-    @SuppressWarnings("unused")
-    private Object createDocumentFromEmail(Object message) {
-        System.out.println("EmailService.createDocumentFromEmail is disabled due to javax.mail dependency issues");
-        return null;
-    }
-
-    /**
-     * Xác định độ ưu tiên - DISABLED
-     */
-    @SuppressWarnings("unused")
-    private String determinePriority(String subject, String from) {
-        System.out.println("EmailService.determinePriority is disabled due to javax.mail dependency issues");
-        return "NORMAL";
-    }
-
-    /**
-     * Xác định phân loại - DISABLED
-     */
-    @SuppressWarnings("unused")
-    private String determineClassification(String subject) {
-        System.out.println("EmailService.determineClassification is disabled due to javax.mail dependency issues");
-        return "Khác";
-    }
-
-    /**
-     * Xác định độ mật - DISABLED
-     */
-    @SuppressWarnings("unused")
-    private String determineSecurityLevel(String subject, String from) {
-        System.out.println("EmailService.determineSecurityLevel is disabled due to javax.mail dependency issues");
-        return "Thường";
-    }
-
-    /**
-     * Lưu attachments vào GridFS - DISABLED
-     */
-    @SuppressWarnings("unused")
-    private String saveEmailAttachments(Object message) {
-        System.out.println("EmailService.saveEmailAttachments is disabled due to javax.mail dependency issues");
-        return null;
-    }
-
-    /**
-     * In hướng dẫn cấu hình Gmail
-     */
-    public static void printGmailSetupInstructions() {
-        System.out.println("=== GMAIL SETUP INSTRUCTIONS ===");
-        System.out.println("1. Enable 2-Factor Authentication in Google Account");
-        System.out.println("2. Generate App Password:");
-        System.out.println("   - Go to Google Account Settings");
-        System.out.println("   - Security > 2-Step Verification > App passwords");
-        System.out.println("   - Select 'Mail' and 'Other'");
-        System.out.println("   - Enter app name: 'Document Management'");
-        System.out.println("   - Copy the 16-character password");
-        System.out.println("3. Enable IMAP in Gmail Settings");
-        System.out.println("4. Use the App Password (not your regular password)");
-        System.out.println("=================================");
-        System.out.println("NOTE: This service is currently disabled due to dependency issues.");
-        System.out.println("Please use SimpleEmailService for testing.");
+    private String saveFirstAttachment(Message m) {
+        try {
+            if (m.isMimeType("multipart/*")) {
+                Multipart mp = (Multipart) m.getContent();
+                for (int i = 0; i < mp.getCount(); i++) {
+                    BodyPart bp = mp.getBodyPart(i);
+                    String fileName = bp.getFileName();
+                    boolean isAttachment = Part.ATTACHMENT.equalsIgnoreCase(bp.getDisposition()) || fileName != null;
+                    if (isAttachment) {
+                        try (InputStream is = bp.getInputStream()) {
+                            return gridFsRepo.saveFile(fileName != null ? fileName : ("email_" + OffsetDateTime.now() + ".bin"), is);
+                        }
+                    }
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
