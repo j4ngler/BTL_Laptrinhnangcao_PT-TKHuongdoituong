@@ -1,9 +1,10 @@
-## Ứng dụng quản lý văn bản (Desktop CLI, Java + PostgreSQL + MongoDB GridFS)
+## Hệ thống quản lý văn bản đến (Java + PostgreSQL + MongoDB GridFS + Gmail Integration)
 
 ### Yêu cầu
 - Java 17+
 - PostgreSQL (đã cài, có DB `docmgmt` hoặc URL tuỳ chọn)
 - MongoDB (đã cài, dùng GridFS)
+- Gmail account với App Password (cho tính năng nhận văn bản từ email)
 
 ### Biến môi trường (có giá trị mặc định)
 - `PG_URL` (mặc định: `jdbc:postgresql://localhost:5432/docmgmt`)
@@ -23,16 +24,50 @@ $env:MONGO_DB="docmgmt"
 $env:MONGO_BUCKET="files"
 ```
 
+### Cấu hình Gmail (cho tính năng nhận văn bản từ email)
+
+1. **Bật 2-Factor Authentication cho Gmail**
+2. **Tạo App Password:**
+   - Vào Google Account Settings
+   - Security > 2-Step Verification > App passwords
+   - Chọn 'Mail' và 'Other'
+   - Nhập tên ứng dụng và tạo password
+3. **Đảm bảo IMAP được bật trong Gmail Settings**
+
 ### Build & chạy
 ```powershell
-# Cách 1: Gradle (khuyến nghị nếu đã có wrapper)
-./gradlew clean build
-./gradlew run --args "--help"
+# Build project
+mvn clean package -DskipTests
 
-# Cách 2: Maven (không cần Gradle)
-mvn -v
-mvn clean package
-mvn exec:java -Dexec.args="--help"
+# Chạy GUI
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --gui
+
+### Thiết lập users mặc định
+```powershell
+# Chạy script thiết lập users
+.\setup-users.ps1
+```
+
+### Các vai trò người dùng
+- **Văn thư (VAN_THU)**: Tiếp nhận và đăng ký văn bản từ email/bưu chính
+- **Lãnh đạo (LANH_DAO)**: Xem xét, chỉ đạo và phân công xử lý
+- **Cán bộ chuyên môn (CAN_BO_CHUYEN_MON)**: Thực hiện xử lý văn bản
+
+### Quy trình văn bản đến
+1. **TIEP_NHAN** - Văn thư nhận văn bản từ email/bưu chính
+2. **DANG_KY** - Văn thư đăng ký vào hệ thống
+3. **CHO_XEM_XET** - Trình lãnh đạo xem xét
+4. **DA_PHAN_CONG** - Lãnh đạo đã chỉ đạo xử lý
+5. **DANG_XU_LY** - Cán bộ chuyên môn đang thực hiện
+6. **HOAN_THANH** - Đã xử lý xong và báo cáo
+
+### Tính năng chính
+- ✅ **Hệ thống đăng nhập** với xác thực mật khẩu
+- ✅ **Phân quyền theo vai trò** - mỗi vai trò có giao diện riêng
+- ✅ **Nhận văn bản từ Gmail** - tích hợp email tự động
+- ✅ **Workflow mới** phù hợp với quy trình văn bản đến
+- ✅ **Tự động phân loại** văn bản theo từ khóa
+- ✅ **Xác định độ ưu tiên** và độ mật tự động
 # hoặc chạy JAR đóng gói kèm phụ thuộc
 java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --help
 

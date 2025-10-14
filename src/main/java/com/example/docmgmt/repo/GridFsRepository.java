@@ -45,6 +45,12 @@ public final class GridFsRepository implements AutoCloseable {
         }
     }
 
+    public String saveFile(String filename, InputStream inputStream) throws IOException {
+        GridFSUploadOptions opts = new GridFSUploadOptions();
+        ObjectId id = bucket().uploadFromStream(filename, inputStream, opts);
+        return id.toHexString();
+    }
+
     @Override
     public void close() {
         // no-op (client managed by Config)

@@ -7,6 +7,9 @@ import com.example.docmgmt.domain.Models.Role;
 
 import java.sql.SQLException;
 
+/**
+ * Service xử lý workflow cho quy trình văn bản đến
+ */
 public final class WorkflowService {
     private final DocumentRepository repo;
     private final UserRepository userRepo;
@@ -21,62 +24,65 @@ public final class WorkflowService {
         this.userRepo = userRepo;
     }
 
-    public void submit(long id, String actor, String note) throws SQLException {
-        // Only from DRAFT
+    /**
+     * Văn thư đăng ký văn bản (từ TIEP_NHAN -> DANG_KY)
+     */
+    public void dangKy(long id, String actor, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
-        if (d.state() != DocState.DRAFT) throw new IllegalStateException("Chỉ chuyển SUBMITTED từ DRAFT");
-        ensureRole(actor, Role.CREATOR);
-        repo.updateState(id, DocState.SUBMITTED);
-        repo.addAudit(id, "SUBMIT", actor, note);
+        if (d.state() != DocState.TIEP_NHAN) throw new IllegalStateException("Chỉ đăng ký sau khi tiếp nhận");
+        ensureRole(actor, Role.VAN_THU);
+        repo.updateState(id, DocState.DANG_KY);
+        repo.addAudit(id, "DANG_KY", actor, note);
     }
 
-    public void classify(long id, String actor, String note) throws SQLException {
+    /**
+     * Lãnh đạo xem xét và chỉ đạo xử lý (từ DANG_KY -> CHO_XEM_XET)
+     */
+    public void xemXet(long id, String actor, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
-        if (d.state() != DocState.SUBMITTED) throw new IllegalStateException("Chỉ phân loại sau khi SUBMITTED");
-        ensureRole(actor, Role.CLASSIFIER);
-        // note format: <classification>|<security>|<free-note>
-        String classification = null, security = null, free = note;
-        if (note != null && !note.isBlank()) {
-            String[] parts = note.split("\\|", 3);
-            if (parts.length >= 1) classification = parts[0];
-            if (parts.length >= 2) security = parts[1];
-            if (parts.length == 3) free = parts[2];
-        }
-        repo.setClassification(id, classification, security);
-        repo.updateState(id, DocState.CLASSIFIED);
-        repo.addAudit(id, "CLASSIFY", actor, free);
+        if (d.state() != DocState.DANG_KY) throw new IllegalStateException("Chỉ xem xét sau khi đăng ký");
+        ensureRole(actor, Role.LANH_DAO);
+        repo.updateState(id, DocState.CHO_XEM_XET);
+        repo.addAudit(id, "XEM_XET", actor, note);
     }
 
-    public void approve(long id, String actor, String note) throws SQLException {
+    /**
+     * Lãnh đạo phân công xử lý (từ CHO_XEM_XET -> DA_PHAN_CONG)
+     */
+    public void phanCong(long id, String actor, String assignedTo, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
-        if (d.state() != DocState.CLASSIFIED) throw new IllegalStateException("Chỉ duyệt sau khi CLASSIFIED");
-        ensureRole(actor, Role.APPROVER);
-        repo.updateState(id, DocState.APPROVED);
-        repo.addAudit(id, "APPROVE", actor, note);
+        if (d.state() != DocState.CHO_XEM_XET) throw new IllegalStateException("Chỉ phân công sau khi xem xét");
+        ensureRole(actor, Role.LANH_DAO);
+        repo.updateAssignedTo(id, assignedTo);
+        repo.updateState(id, DocState.DA_PHAN_CONG);
+        repo.addAudit(id, "PHAN_CONG", actor, "Phân công cho: " + assignedTo + ". " + note);
     }
 
-    public void issue(long id, String actor, String note) throws SQLException {
+    /**
+     * Cán bộ chuyên môn bắt đầu xử lý (từ DA_PHAN_CONG -> DANG_XU_LY)
+     */
+    public void batDauXuLy(long id, String actor, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
-        if (d.state() != DocState.APPROVED) throw new IllegalStateException("Chỉ ban hành sau khi APPROVED");
-        ensureRole(actor, Role.PUBLISHER);
-        int year = java.time.OffsetDateTime.now().getYear();
-        int number = repo.nextDocNumberForYear(year);
-        repo.assignIssueNumber(id, number, year);
-        repo.updateState(id, DocState.ISSUED);
-        repo.addAudit(id, "ISSUE", actor, note);
+        if (d.state() != DocState.DA_PHAN_CONG) throw new IllegalStateException("Chỉ bắt đầu xử lý sau khi được phân công");
+        ensureRole(actor, Role.CAN_BO_CHUYEN_MON);
+        repo.updateState(id, DocState.DANG_XU_LY);
+        repo.addAudit(id, "BAT_DAU_XU_LY", actor, note);
     }
 
-    public void archive(long id, String actor, String note) throws SQLException {
+    /**
+     * Cán bộ chuyên môn hoàn thành xử lý (từ DANG_XU_LY -> HOAN_THANH)
+     */
+    public void hoanThanh(long id, String actor, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
-        if (d.state() != DocState.ISSUED) throw new IllegalStateException("Chỉ lưu trữ sau khi ISSUED");
-        ensureRole(actor, Role.ARCHIVER);
-        repo.updateState(id, DocState.ARCHIVED);
-        repo.addAudit(id, "ARCHIVE", actor, note);
+        if (d.state() != DocState.DANG_XU_LY) throw new IllegalStateException("Chỉ hoàn thành sau khi đang xử lý");
+        ensureRole(actor, Role.CAN_BO_CHUYEN_MON);
+        repo.updateState(id, DocState.HOAN_THANH);
+        repo.addAudit(id, "HOAN_THANH", actor, note);
     }
 
     private void ensureRole(String username, Role required) throws SQLException {

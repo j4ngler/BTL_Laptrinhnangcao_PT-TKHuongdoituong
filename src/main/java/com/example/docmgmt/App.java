@@ -5,6 +5,7 @@ import com.example.docmgmt.service.DocumentService;
 import com.example.docmgmt.repo.DocumentRepository;
 import com.example.docmgmt.service.WorkflowService;
 import com.example.docmgmt.repo.UserRepository;
+import com.example.docmgmt.service.SimpleMultiGmailManager;
 import com.example.docmgmt.domain.Models.Role;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -51,8 +52,10 @@ public class App implements Callable<Integer> {
     @Option(names = {"--archive"}, description = "Chuyển văn bản sang ARCHIVED: <docId>:<actor>:<note>")
     String archiveSpec;
 
-    @Option(names = {"--add-user"}, description = "Thêm/cập nhật người dùng: <username>:<role>")
+    @Option(names = {"--add-user"}, description = "Thêm/cập nhật người dùng: <username>:<password>:<role>")
     String addUserSpec;
+    @Option(names = {"--set-password"}, description = "Đặt lại mật khẩu: <username>:<password>")
+    String setPasswordSpec;
     @Option(names = {"--list-users"}, description = "Liệt kê người dùng")
     boolean listUsers;
     @Option(names = {"--reset-db"}, description = "Reset database (xóa và tạo lại tables)")
@@ -60,6 +63,34 @@ public class App implements Callable<Integer> {
     
     @Option(names = {"--gui"}, description = "Chạy giao diện desktop Swing")
     boolean gui;
+    
+    // Multi-Gmail commands
+    @Option(names = {"--add-gmail"}, description = "Thêm Gmail account: <email>:<credentials_path>")
+    String addGmailSpec;
+    
+    @Option(names = {"--remove-gmail"}, description = "Xóa Gmail account: <email>")
+    String removeGmailSpec;
+    
+    @Option(names = {"--list-gmail"}, description = "Liệt kê Gmail accounts")
+    boolean listGmail;
+    
+    @Option(names = {"--fetch-all-emails"}, description = "Fetch emails từ tất cả Gmail accounts")
+    boolean fetchAllEmails;
+    
+    @Option(names = {"--fetch-gmail"}, description = "Fetch emails từ Gmail account cụ thể: <email>")
+    String fetchGmailSpec;
+    
+    @Option(names = {"--gmail-health-check"}, description = "Kiểm tra health của tất cả Gmail accounts")
+    boolean gmailHealthCheck;
+    
+    @Option(names = {"--gmail-stats"}, description = "Hiển thị thống kê Gmail accounts")
+    boolean gmailStats;
+    
+    @Option(names = {"--start-auto-sync"}, description = "Bắt đầu auto-sync emails")
+    boolean startAutoSync;
+    
+    @Option(names = {"--stop-auto-sync"}, description = "Dừng auto-sync emails")
+    boolean stopAutoSync;
 
     public static void main(String[] args) {
         int exit = new CommandLine(new App()).execute(args);
@@ -109,15 +140,27 @@ public class App implements Callable<Integer> {
                 System.out.println("Đã thêm văn bản: id=" + id);
                 return 0;
             }
-            if (addUserSpec != null || listUsers) {
+            if (addUserSpec != null || listUsers || setPasswordSpec != null) {
                 var ur = new UserRepository(config.dataSource);
                 ur.migrate();
                 if (addUserSpec != null) {
-                    var p = addUserSpec.split(":", 2);
-                    if (p.length != 2) { System.err.println("Định dạng --add-user <username>:<role>"); return 1; }
-                    var role = Role.valueOf(p[1].toUpperCase());
-                    long uid = ur.addUser(p[0], role);
+                    var p = addUserSpec.split(":", 3);
+                    if (p.length != 3) { System.err.println("Định dạng --add-user <username>:<password>:<role>"); return 1; }
+                    var role = Role.valueOf(p[2].toUpperCase());
+                    // Hash password trước khi lưu (không dùng BCrypt để tránh phụ thuộc)
+                    String hashedPassword = com.example.docmgmt.service.PasswordUtil.hashPassword(p[1]);
+                    long uid = ur.addUser(p[0], hashedPassword, role);
+                    // Nếu user đã tồn tại (DO NOTHING), đảm bảo cập nhật password
+                    try { ur.updatePassword(p[0], hashedPassword); } catch (Exception ignore) {}
                     System.out.println("OK user id=" + uid + ", " + p[0] + ":" + role);
+                    return 0;
+                }
+                if (setPasswordSpec != null) {
+                    var p = setPasswordSpec.split(":", 2);
+                    if (p.length != 2) { System.err.println("Định dạng --set-password <username>:<password>"); return 1; }
+                    String hashedPassword = com.example.docmgmt.service.PasswordUtil.hashPassword(p[1]);
+                    ur.updatePassword(p[0], hashedPassword);
+                    System.out.println("OK đặt lại mật khẩu cho " + p[0]);
                     return 0;
                 }
                 if (listUsers) {
@@ -175,11 +218,11 @@ public class App implements Callable<Integer> {
                 var ur = new UserRepository(config.dataSource);
                 ur.migrate();
                 var wf = new WorkflowService(repo, ur);
-                if (submitSpec != null) { var p = submitSpec.split(":", 3); wf.submit(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
-                if (classifySpec != null) { var p = classifySpec.split(":", 3); wf.classify(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
-                if (approveSpec != null) { var p = approveSpec.split(":", 3); wf.approve(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
-                if (issueSpec != null) { var p = issueSpec.split(":", 3); wf.issue(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
-                if (archiveSpec != null) { var p = archiveSpec.split(":", 3); wf.archive(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
+                if (submitSpec != null) { var p = submitSpec.split(":", 3); wf.dangKy(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
+                if (classifySpec != null) { var p = classifySpec.split(":", 3); wf.xemXet(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
+                if (approveSpec != null) { var p = approveSpec.split(":", 3); wf.phanCong(Long.parseLong(p[0]), p[1], "System", p.length>2?p[2]:""); return 0; }
+                if (issueSpec != null) { var p = issueSpec.split(":", 3); wf.batDauXuLy(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
+                if (archiveSpec != null) { var p = archiveSpec.split(":", 3); wf.hoanThanh(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
             }
             if (resetDb) {
                 try (var c = config.dataSource.getConnection(); var st = c.createStatement()) {
@@ -195,6 +238,103 @@ public class App implements Callable<Integer> {
                 System.out.println("Database đã được reset");
                 return 0;
             }
+            
+            // Multi-Gmail commands
+            if (addGmailSpec != null || removeGmailSpec != null || listGmail || fetchAllEmails || 
+                fetchGmailSpec != null || gmailHealthCheck || gmailStats || startAutoSync || stopAutoSync) {
+                
+                var docRepo = new DocumentRepository(config.dataSource);
+                var gridFsRepo = new com.example.docmgmt.repo.GridFsRepository(config.mongoClient, config.mongoDb, "files");
+                var gaRepo = new com.example.docmgmt.repo.GmailAccountRepository(config.dataSource);
+                gaRepo.migrate();
+                var multiGmailManager = new SimpleMultiGmailManager(docRepo, gridFsRepo, gaRepo, 5, 5, "is:unread");
+                
+                if (addGmailSpec != null) {
+                    var parts = addGmailSpec.split(":", 2);
+                    if (parts.length != 2) {
+                        System.err.println("Định dạng --add-gmail <email>:<credentials_path>");
+                        return 1;
+                    }
+                    boolean success = multiGmailManager.addGmailAccount(parts[0], parts[1]);
+                    System.out.println("Add Gmail account " + parts[0] + ": " + (success ? "SUCCESS" : "FAILED"));
+                    return success ? 0 : 1;
+                }
+                
+                if (removeGmailSpec != null) {
+                    boolean success = multiGmailManager.removeGmailAccount(removeGmailSpec);
+                    System.out.println("Remove Gmail account " + removeGmailSpec + ": " + (success ? "SUCCESS" : "FAILED"));
+                    return success ? 0 : 1;
+                }
+                
+                if (listGmail) {
+                    System.out.println("Gmail Accounts:");
+                    multiGmailManager.getGmailAccounts().forEach(email -> System.out.println("  " + email));
+                    return 0;
+                }
+                
+                if (fetchAllEmails) {
+                    System.out.println("Fetching emails from all Gmail accounts...");
+                    try {
+                        var results = multiGmailManager.fetchAllEmailsAsync().get();
+                        int total = results.values().stream().mapToInt(Integer::intValue).sum();
+                        System.out.println("Total emails processed: " + total);
+                        results.forEach((email, count) -> System.out.println("  " + email + ": " + count + " emails"));
+                        return 0;
+                    } catch (Exception e) {
+                        System.err.println("Error fetching emails: " + e.getMessage());
+                        return 1;
+                    }
+                }
+                
+                if (fetchGmailSpec != null) {
+                    System.out.println("Fetching emails from " + fetchGmailSpec + "...");
+                    try {
+                        int count = multiGmailManager.fetchEmailsFromAccount(fetchGmailSpec).get();
+                        System.out.println("Processed " + count + " emails from " + fetchGmailSpec);
+                        return 0;
+                    } catch (Exception e) {
+                        System.err.println("Error fetching emails from " + fetchGmailSpec + ": " + e.getMessage());
+                        return 1;
+                    }
+                }
+                
+                if (gmailHealthCheck) {
+                    System.out.println("Gmail Health Check:");
+                    var health = multiGmailManager.healthCheck();
+                    health.forEach((email, isHealthy) -> 
+                        System.out.println("  " + email + ": " + (isHealthy ? "HEALTHY" : "UNHEALTHY")));
+                    return 0;
+                }
+                
+                if (gmailStats) {
+                    System.out.println("Gmail Statistics:");
+                    var stats = multiGmailManager.getStatistics();
+                    stats.forEach((key, value) -> System.out.println("  " + key + ": " + value));
+                    return 0;
+                }
+                
+                if (startAutoSync) {
+                    System.out.println("Starting auto-sync...");
+                    multiGmailManager.startAutoSync();
+                    System.out.println("Auto-sync started. Press Ctrl+C to stop.");
+                    // Keep running
+                    try {
+                        Thread.currentThread().join();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        multiGmailManager.stopAutoSync();
+                    }
+                    return 0;
+                }
+                
+                if (stopAutoSync) {
+                    System.out.println("Stopping auto-sync...");
+                    multiGmailManager.stopAutoSync();
+                    System.out.println("Auto-sync stopped");
+                    return 0;
+                }
+            }
+            
             new CommandLine(this).usage(System.out);
             return 0;
         }

@@ -29,7 +29,7 @@ public final class DocumentRepository {
                     "title TEXT NOT NULL,\n" +
                     "created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n" +
                     "latest_file_id TEXT,\n" +
-                    "state TEXT NOT NULL DEFAULT 'DRAFT',\n" +
+                    "state TEXT NOT NULL DEFAULT 'TIEP_NHAN',\n" +
                     "classification TEXT,\n" +
                     "security_level TEXT,\n" +
                     "doc_number INT,\n" +
@@ -55,11 +55,24 @@ public final class DocumentRepository {
                     "at TIMESTAMPTZ NOT NULL DEFAULT now(),\n" +
                     "note TEXT\n" +
                     ")");
+            
+            // Migration: Update old states to new states
+            try {
+                st.executeUpdate("UPDATE documents SET state = 'TIEP_NHAN' WHERE state = 'DRAFT'");
+                st.executeUpdate("UPDATE documents SET state = 'DANG_KY' WHERE state = 'SUBMITTED'");
+                st.executeUpdate("UPDATE documents SET state = 'CHO_XEM_XET' WHERE state = 'CLASSIFIED'");
+                st.executeUpdate("UPDATE documents SET state = 'DA_PHAN_CONG' WHERE state = 'APPROVED'");
+                st.executeUpdate("UPDATE documents SET state = 'DANG_XU_LY' WHERE state = 'ISSUED'");
+                st.executeUpdate("UPDATE documents SET state = 'HOAN_THANH' WHERE state = 'ARCHIVED'");
+            } catch (SQLException e) {
+                // Ignore if columns don't exist yet
+                System.out.println("Migration completed (some states may not exist yet)");
+            }
         }
     }
 
     public long insert(String title, String latestFileId) throws SQLException {
-        String sql = "INSERT INTO documents(title, latest_file_id, state) VALUES(?, ?, 'DRAFT') RETURNING id";
+        String sql = "INSERT INTO documents(title, latest_file_id, state) VALUES(?, ?, 'TIEP_NHAN') RETURNING id";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             ps.setString(1, title);
             ps.setString(2, latestFileId);
@@ -71,7 +84,7 @@ public final class DocumentRepository {
     }
 
     public long insert(String title, String latestFileId, OffsetDateTime deadline, String assignedTo, String priority) throws SQLException {
-        String sql = "INSERT INTO documents(title, latest_file_id, deadline, assigned_to, priority, state) VALUES(?, ?, ?, ?, ?, 'DRAFT') RETURNING id";
+        String sql = "INSERT INTO documents(title, latest_file_id, deadline, assigned_to, priority, state) VALUES(?, ?, ?, ?, ?, 'TIEP_NHAN') RETURNING id";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             ps.setString(1, title);
             ps.setString(2, latestFileId);
@@ -81,6 +94,29 @@ public final class DocumentRepository {
             try (var rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getLong(1);
+            }
+        }
+    }
+
+    public Document insert(Document doc) throws SQLException {
+        String sql = "INSERT INTO documents(title, latest_file_id, state, classification, security_level, doc_number, doc_year, deadline, assigned_to, priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, doc.title());
+            ps.setString(2, doc.latestFileId());
+            ps.setString(3, doc.state().name());
+            ps.setString(4, doc.classification());
+            ps.setString(5, doc.securityLevel());
+            ps.setObject(6, doc.docNumber());
+            ps.setObject(7, doc.docYear());
+            ps.setObject(8, doc.deadline());
+            ps.setString(9, doc.assignedTo());
+            ps.setString(10, doc.priority());
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                long id = rs.getLong(1);
+                return new Document(id, doc.title(), doc.createdAt(), doc.latestFileId(), doc.state(),
+                                  doc.classification(), doc.securityLevel(), doc.docNumber(), doc.docYear(),
+                                  doc.deadline(), doc.assignedTo(), doc.priority());
             }
         }
     }
@@ -304,6 +340,20 @@ public final class DocumentRepository {
         // Add audit log
         addAudit(id, "ASSIGN", "System", "Phân phối cho: " + assignedTo + 
                 (instructions != null && !instructions.isEmpty() ? " | Hướng dẫn: " + instructions : ""));
+    }
+
+    /**
+     * Cập nhật người được phân công
+     */
+    public void updateAssignedTo(long id, String assignedTo) throws SQLException {
+        try (var conn = ds.getConnection()) {
+            var sql = "UPDATE documents SET assigned_to = ? WHERE id = ?";
+            try (var ps = conn.prepareStatement(sql)) {
+                ps.setString(1, assignedTo);
+                ps.setLong(2, id);
+                ps.executeUpdate();
+            }
+        }
     }
 }
 

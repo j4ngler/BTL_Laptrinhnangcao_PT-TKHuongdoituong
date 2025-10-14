@@ -4,10 +4,13 @@ import com.example.docmgmt.config.Config;
 import com.example.docmgmt.domain.Models;
 import com.example.docmgmt.domain.Models.Document;
 import com.example.docmgmt.domain.Models.AuditLog;
+import com.example.docmgmt.domain.Models.Role;
 import com.example.docmgmt.repo.DocumentRepository;
 import com.example.docmgmt.repo.UserRepository;
 import com.example.docmgmt.service.DocumentService;
 import com.example.docmgmt.service.WorkflowService;
+import com.example.docmgmt.service.AuthenticationService;
+import com.example.docmgmt.service.SimpleEmailService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -18,10 +21,14 @@ import java.util.List;
 public class SwingApp {
     private final DocumentService docService;
     private final WorkflowService workflowService;
-    private final JFrame frame;
-    private final JTable table;
-    private final DefaultTableModel model;
-    private final JTextField searchField;
+    private final AuthenticationService authService;
+    private final SimpleEmailService emailService;
+    private com.example.docmgmt.service.SimpleMultiGmailManager autoSyncManager;
+    private JFrame frame;
+    private JTable table;
+    private DefaultTableModel model;
+    private JTextField searchField;
+    private JLabel userInfoLabel;
 
     public SwingApp() throws Exception {
         System.out.println("Đang khởi tạo SwingApp...");
@@ -37,6 +44,20 @@ public class SwingApp {
             var ur = new UserRepository(config.dataSource); 
             ur.migrate();
             this.workflowService = new WorkflowService(repo, ur);
+            this.authService = new AuthenticationService(ur);
+            var gridRepo = new com.example.docmgmt.repo.GridFsRepository(config.mongoClient, "docmgmt", "files");
+            this.emailService = new SimpleEmailService(repo, gridRepo);
+            // Auto-sync Gmail: load accounts từ DB và chạy nền nếu có
+            try {
+                var gaRepo = new com.example.docmgmt.repo.GmailAccountRepository(config.dataSource);
+                gaRepo.migrate();
+                this.autoSyncManager = new com.example.docmgmt.service.SimpleMultiGmailManager(repo, gridRepo, gaRepo, 5, 5, "is:unread");
+                if (!gaRepo.listActive().isEmpty()) {
+                    this.autoSyncManager.startAutoSync();
+                }
+            } catch (Exception ex) {
+                System.err.println("Auto-sync init failed: " + ex.getMessage());
+            }
             System.out.println("Services initialized successfully");
         } catch (Exception e) {
             System.err.println("Lỗi khởi tạo database: " + e.getMessage());
@@ -44,69 +65,132 @@ public class SwingApp {
             throw e;
         }
 
-        frame = new JFrame("Quản lý văn bản (Swing)");
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setSize(900, 520);
-
-        // Main button panel
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        
-        JButton btnAdd = new JButton("Thêm");
-        JButton btnExport = new JButton("Xuất");
-        JButton btnRefresh = new JButton("Làm mới");
-        JButton btnSubmit = new JButton("Submit");
-        JButton btnClassify = new JButton("Classify");
-        JButton btnApprove = new JButton("Approve");
-        JButton btnIssue = new JButton("Issue");
-        JButton btnArchive = new JButton("Archive");
-        JButton btnDetails = new JButton("Chi tiết");
-        JButton btnDashboard = new JButton("Dashboard");
-        JButton btnDistribute = new JButton("Phân phối");
-        JButton btnRecall = new JButton("Thu hồi");
-        searchField = new JTextField(20);
-        JButton btnSearch = new JButton("Tìm");
-        
-        // Add buttons to panel
-        top.add(btnAdd); 
-        top.add(btnExport); 
-        top.add(btnDetails); 
-        top.add(new JSeparator(SwingConstants.VERTICAL));
-        top.add(btnRefresh); 
-        top.add(new JSeparator(SwingConstants.VERTICAL));
-        top.add(btnSubmit); 
-        top.add(btnClassify); 
-        top.add(btnApprove); 
-        top.add(btnIssue); 
-        top.add(btnArchive);
-        top.add(new JSeparator(SwingConstants.VERTICAL)); 
-        top.add(searchField); 
-        top.add(btnSearch);
-
+        // Khởi tạo các biến cần thiết trước
+        frame = new JFrame("Quản lý văn bản đến");
         model = new DefaultTableModel(new Object[]{"ID","Tiêu đề","Trạng thái","Tạo lúc","Số/VB","Thời hạn","Độ ưu tiên","Phân công"}, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(model);
+        searchField = new JTextField(20);
+        
+        // Hiển thị dialog đăng nhập trước
+        if (!showLoginDialog()) {
+            System.exit(0);
+            return;
+        }
+
+        // Cập nhật title sau khi đăng nhập thành công
+        frame.setTitle("Quản lý văn bản đến - " + authService.getCurrentUserRoleName());
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame.setSize(1000, 600);
+        // Dừng auto-sync khi đóng
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                if (autoSyncManager != null) {
+                    autoSyncManager.stopAutoSync();
+                    autoSyncManager.shutdown();
+                }
+            }
+        });
+
+        // Top panel chỉ hiển thị thông tin người dùng (các thao tác đưa vào Menu)
+        JPanel top = new JPanel(new BorderLayout());
+        
+        // User info panel (right side)
+        JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        userInfoLabel = new JLabel("Người dùng: " + authService.getCurrentUser().username() + 
+                                  " (" + authService.getCurrentUserRoleName() + ")");
+        userInfoLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        JButton btnLogout = new JButton("Đăng xuất");
+        btnLogout.setBackground(new Color(220, 20, 60));
+        btnLogout.setForeground(Color.WHITE);
+        userPanel.add(userInfoLabel);
+        userPanel.add(new JSeparator(SwingConstants.VERTICAL));
+        userPanel.add(btnLogout);
+        
+        // Add panels to top
+        top.add(userPanel, BorderLayout.EAST);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane scroll = new JScrollPane(table);
 
         frame.getContentPane().add(top, BorderLayout.NORTH);
         frame.getContentPane().add(scroll, BorderLayout.CENTER);
-
-        btnRefresh.addActionListener(e -> reload());
-        btnSearch.addActionListener(e -> doSearch());
-        btnAdd.addActionListener(e -> doAdd());
-        btnExport.addActionListener(e -> doExport());
-        btnDetails.addActionListener(e -> doDetails());
-        btnDashboard.addActionListener(e -> doDashboard());
-        btnDistribute.addActionListener(e -> doDistribute());
-        btnRecall.addActionListener(e -> doRecall());
-        btnSubmit.addActionListener(e -> doTransition("SUBMIT"));
-        btnClassify.addActionListener(e -> doTransition("CLASSIFY"));
-        btnApprove.addActionListener(e -> doTransition("APPROVE"));
-        btnIssue.addActionListener(e -> doTransition("ISSUE"));
-        btnArchive.addActionListener(e -> doTransition("ARCHIVE"));
+        
+        // Menu bar với các thao tác
+        Role currentRole = authService.getCurrentUser().role();
+        frame.setJMenuBar(buildMenuBar(currentRole));
+        
+        btnLogout.addActionListener(e -> doLogout());
 
         reload();
+    }
+
+    private JMenuBar buildMenuBar(Role currentRole) {
+        JMenuBar menuBar = new JMenuBar();
+        
+        JMenu menuFile = new JMenu("Tệp");
+        JMenuItem miAdd = new JMenuItem("Thêm văn bản...");
+        JMenuItem miExport = new JMenuItem("Xuất...");
+        JMenuItem miDetails = new JMenuItem("Chi tiết");
+        JMenuItem miExit = new JMenuItem("Thoát");
+        miAdd.addActionListener(e -> doAdd());
+        miExport.addActionListener(e -> doExport());
+        miDetails.addActionListener(e -> doDetails());
+        miExit.addActionListener(e -> frame.dispose());
+        menuFile.add(miAdd);
+        menuFile.add(miExport);
+        menuFile.add(miDetails);
+        menuFile.addSeparator();
+        menuFile.add(miExit);
+        menuBar.add(menuFile);
+        
+        JMenu menuActions = new JMenu("Thao tác");
+        JMenuItem miRefresh = new JMenuItem("Làm mới");
+        JMenuItem miSearch = new JMenuItem("Tìm kiếm...");
+        miRefresh.addActionListener(e -> reload());
+        miSearch.addActionListener(e -> doSearchInput());
+        menuActions.add(miRefresh);
+        menuActions.add(miSearch);
+        menuBar.add(menuActions);
+        
+        JMenu menuWorkflow = new JMenu("Workflow");
+        if (currentRole == Role.VAN_THU) {
+            JMenuItem miDangKy = new JMenuItem("Đăng ký");
+            miDangKy.addActionListener(e -> doWorkflowAction("DANG_KY"));
+            menuWorkflow.add(miDangKy);
+        } else if (currentRole == Role.LANH_DAO) {
+            JMenuItem miXemXet = new JMenuItem("Xem xét");
+            JMenuItem miPhanCong = new JMenuItem("Phân công");
+            miXemXet.addActionListener(e -> doWorkflowAction("XEM_XET"));
+            miPhanCong.addActionListener(e -> doWorkflowAction("PHAN_CONG"));
+            menuWorkflow.add(miXemXet);
+            menuWorkflow.add(miPhanCong);
+        } else if (currentRole == Role.CAN_BO_CHUYEN_MON) {
+            JMenuItem miBatDau = new JMenuItem("Bắt đầu xử lý");
+            JMenuItem miHoanThanh = new JMenuItem("Hoàn thành");
+            miBatDau.addActionListener(e -> doWorkflowAction("BAT_DAU_XU_LY"));
+            miHoanThanh.addActionListener(e -> doWorkflowAction("HOAN_THANH"));
+            menuWorkflow.add(miBatDau);
+            menuWorkflow.add(miHoanThanh);
+        }
+        menuBar.add(menuWorkflow);
+        
+        JMenu menuEmail = new JMenu("Email");
+        JMenuItem miFetch = new JMenuItem("Nhận từ Gmail...");
+        miFetch.addActionListener(e -> doEmail());
+        menuEmail.add(miFetch);
+        JMenuItem miManage = new JMenuItem("Quản lý accounts...");
+        miManage.addActionListener(e -> {
+            try {
+                var gaRepo = new com.example.docmgmt.repo.GmailAccountRepository(docService.getDataSource());
+                gaRepo.migrate();
+                new GmailAccountsDialog(frame, gaRepo).setVisible(true);
+            } catch (Exception ex) { showError(ex); }
+        });
+        menuEmail.add(miManage);
+        menuBar.add(menuEmail);
+        
+        return menuBar;
     }
 
     private void reload() {
@@ -139,6 +223,7 @@ public class SwingApp {
         };
     }
 
+    @SuppressWarnings("unused")
     private void doSearch() {
         try {
             String kw = searchField.getText();
@@ -155,6 +240,22 @@ public class SwingApp {
                     d.createdAt().toString().substring(0, 19), docNumber,
                     deadline, priority, assignedTo
                 });
+            }
+        } catch (Exception ex) { showError(ex); }
+    }
+
+    private void doSearchInput() {
+        String kw = JOptionPane.showInputDialog(frame, "Nhập từ khóa cần tìm:", "Tìm kiếm", JOptionPane.QUESTION_MESSAGE);
+        if (kw == null) return;
+        try {
+            List<Models.Document> docs = (kw.isBlank()) ? docService.listDocuments() : docService.searchByTitle(kw);
+            model.setRowCount(0);
+            for (var d : docs) {
+                String docNumber = d.docNumber() != null ? d.docNumber() + "/" + d.docYear() : "";
+                String deadline = d.deadline() != null ? d.deadline().toString().substring(0, 16) : "";
+                String priority = d.priority() != null ? getPriorityDisplayName(d.priority()) : "Thường";
+                String assignedTo = d.assignedTo() != null ? d.assignedTo() : "Chưa phân công";
+                model.addRow(new Object[]{ d.id(), d.title(), d.state().name(), d.createdAt().toString().substring(0, 19), docNumber, deadline, priority, assignedTo });
             }
         } catch (Exception ex) { showError(ex); }
     }
@@ -216,19 +317,23 @@ public class SwingApp {
         }
     }
 
+    @SuppressWarnings("unused")
     private void doDashboard() {
         info("Tính năng Dashboard đang được phát triển");
     }
 
+    @SuppressWarnings("unused")
     private void doDistribute() {
         info("Tính năng phân phối văn bản đang được phát triển");
     }
 
+    @SuppressWarnings("unused")
     private void doRecall() {
         info("Tính năng thu hồi văn bản đang được phát triển");
     }
 
 
+    @SuppressWarnings("unused")
     private void doTransition(String action) {
         Long id = selectedId(); if (id == null) { info("Chọn một dòng trước"); return; }
         
@@ -316,7 +421,7 @@ public class SwingApp {
             
             String fullNote = classification + "|" + security + "|" + note;
             try {
-                workflowService.classify(id, actor, fullNote);
+                workflowService.xemXet(id, actor, fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -373,7 +478,7 @@ public class SwingApp {
             }
             
             try {
-                workflowService.submit(id, actor, note);
+                workflowService.dangKy(id, actor, note);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -415,8 +520,15 @@ public class SwingApp {
         decisionPanel.add(decisionReject);
         panel.add(decisionPanel, gbc);
         
-        // Note
+        // Assigned To
         gbc.gridx = 0; gbc.gridy = 2; gbc.fill = GridBagConstraints.NONE;
+        panel.add(new JLabel("Phân công cho:"), gbc);
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        JTextField assignedToField = new JTextField(15);
+        panel.add(assignedToField, gbc);
+        
+        // Note
+        gbc.gridx = 0; gbc.gridy = 3; gbc.fill = GridBagConstraints.NONE;
         panel.add(new JLabel("Ghi chú:"), gbc);
         gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         JTextField noteField = new JTextField(15);
@@ -436,6 +548,7 @@ public class SwingApp {
         okBtn.addActionListener(e -> {
             String actor = actorField.getText().trim();
             String decision = decisionApprove.isSelected() ? "duyệt" : "từ chối";
+            String assignedTo = assignedToField.getText().trim();
             String note = noteField.getText().trim();
             
             if (actor.isEmpty()) {
@@ -443,9 +556,14 @@ public class SwingApp {
                 return;
             }
             
+            if (assignedTo.isEmpty()) {
+                info("Nhập người được phân công");
+                return;
+            }
+            
             String fullNote = decision + " - " + note;
             try {
-                workflowService.approve(id, actor, fullNote);
+                workflowService.phanCong(id, actor, assignedTo, fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -517,7 +635,7 @@ public class SwingApp {
             
             String fullNote = type + " - " + note;
             try {
-                workflowService.issue(id, actor, fullNote);
+                workflowService.batDauXuLy(id, actor, fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -589,7 +707,7 @@ public class SwingApp {
             
             String fullNote = type + " - " + note;
             try {
-                workflowService.archive(id, actor, fullNote);
+                workflowService.hoanThanh(id, actor, fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -698,6 +816,132 @@ public class SwingApp {
     }
 
     private void info(String msg) { JOptionPane.showMessageDialog(frame, msg, "Thông báo", JOptionPane.INFORMATION_MESSAGE); }
+
+    /**
+     * Hiển thị dialog đăng nhập
+     */
+    private boolean showLoginDialog() {
+        LoginDialog loginDialog = new LoginDialog(null, authService);
+        loginDialog.setVisible(true);
+        return loginDialog.isLoginSuccessful();
+    }
+
+    /**
+     * Xử lý nhận văn bản từ email
+     */
+    private void doEmail() {
+        try {
+            // Hiển thị dialog cấu hình email
+            EmailConfigDialog configDialog = new EmailConfigDialog(frame);
+            configDialog.setVisible(true);
+            
+            if (!configDialog.isConfigSaved()) {
+                return;
+            }
+            
+            String email = configDialog.getEmail();
+            String password = configDialog.getPassword();
+            
+            // Show progress dialog
+            JDialog progressDialog = new JDialog(frame, "Đang nhận văn bản từ email...", true);
+            progressDialog.setSize(400, 150);
+            progressDialog.setLocationRelativeTo(frame);
+            
+            JPanel progressPanel = new JPanel(new BorderLayout());
+            progressPanel.add(new JLabel("Đang kết nối và nhận văn bản từ Gmail...", JLabel.CENTER), BorderLayout.CENTER);
+            
+            JProgressBar progressBar = new JProgressBar();
+            progressBar.setIndeterminate(true);
+            progressPanel.add(progressBar, BorderLayout.SOUTH);
+            
+            progressDialog.add(progressPanel);
+            progressDialog.setVisible(true);
+            
+            // Run email fetching in background
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    int count = emailService.fetchEmailsFromGmail(email, password);
+                    progressDialog.dispose();
+                    info("Đã nhận " + count + " văn bản từ email thành công!");
+                    reload();
+                } catch (Exception e) {
+                    progressDialog.dispose();
+                    showError(e);
+                }
+            });
+            
+        } catch (Exception e) {
+            showError(e);
+        }
+    }
+
+    /**
+     * Xử lý đăng xuất
+     */
+    private void doLogout() {
+        int result = JOptionPane.showConfirmDialog(frame, "Bạn có chắc muốn đăng xuất?", 
+                                                "Xác nhận đăng xuất", JOptionPane.YES_NO_OPTION);
+        if (result == JOptionPane.YES_OPTION) {
+            authService.logout();
+            frame.dispose();
+            // Restart application
+            try {
+                SwingApp newApp = new SwingApp();
+                newApp.show();
+            } catch (Exception e) {
+                showError(e);
+            }
+        }
+    }
+
+    /**
+     * Xử lý các hành động workflow
+     */
+    private void doWorkflowAction(String action) {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(frame, "Vui lòng chọn văn bản cần xử lý!", 
+                                        "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        long docId = (Long) model.getValueAt(row, 0);
+        String actor = authService.getCurrentUser().username();
+        
+        try {
+            switch (action) {
+                case "DANG_KY":
+                    String note1 = JOptionPane.showInputDialog(frame, "Ghi chú đăng ký:", "Đăng ký văn bản", JOptionPane.QUESTION_MESSAGE);
+                    workflowService.dangKy(docId, actor, note1);
+                    break;
+                case "XEM_XET":
+                    String note2 = JOptionPane.showInputDialog(frame, "Ghi chú xem xét:", "Xem xét văn bản", JOptionPane.QUESTION_MESSAGE);
+                    workflowService.xemXet(docId, actor, note2);
+                    break;
+                case "PHAN_CONG":
+                    String assignedTo = JOptionPane.showInputDialog(frame, "Phân công cho ai:", "Phân công xử lý", JOptionPane.QUESTION_MESSAGE);
+                    if (assignedTo != null && !assignedTo.trim().isEmpty()) {
+                        String note3 = JOptionPane.showInputDialog(frame, "Hướng dẫn xử lý:", "Phân công xử lý", JOptionPane.QUESTION_MESSAGE);
+                        workflowService.phanCong(docId, actor, assignedTo, note3);
+                    }
+                    break;
+                case "BAT_DAU_XU_LY":
+                    String note4 = JOptionPane.showInputDialog(frame, "Ghi chú bắt đầu xử lý:", "Bắt đầu xử lý", JOptionPane.QUESTION_MESSAGE);
+                    workflowService.batDauXuLy(docId, actor, note4);
+                    break;
+                case "HOAN_THANH":
+                    String note5 = JOptionPane.showInputDialog(frame, "Báo cáo kết quả xử lý:", "Hoàn thành xử lý", JOptionPane.QUESTION_MESSAGE);
+                    workflowService.hoanThanh(docId, actor, note5);
+                    break;
+            }
+            
+            info("Thực hiện " + action + " thành công!");
+            reload();
+            
+        } catch (Exception e) {
+            showError(e);
+        }
+    }
 
     public void show() { frame.setVisible(true); }
 
