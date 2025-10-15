@@ -219,10 +219,9 @@ public class App implements Callable<Integer> {
                 ur.migrate();
                 var wf = new WorkflowService(repo, ur);
                 if (submitSpec != null) { var p = submitSpec.split(":", 3); wf.dangKy(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
-                if (classifySpec != null) { var p = classifySpec.split(":", 3); wf.xemXet(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
-                if (approveSpec != null) { var p = approveSpec.split(":", 3); wf.phanCong(Long.parseLong(p[0]), p[1], "System", p.length>2?p[2]:""); return 0; }
-                if (issueSpec != null) { var p = issueSpec.split(":", 3); wf.batDauXuLy(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
-                if (archiveSpec != null) { var p = archiveSpec.split(":", 3); wf.hoanThanh(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
+                if (classifySpec != null) { var p = classifySpec.split(":", 3); wf.chiDaoXuLy(Long.parseLong(p[0]), p[1], "System", p.length>2?p[2]:""); return 0; }
+                if (issueSpec != null) { var p = issueSpec.split(":", 3); wf.thucHienXuLy(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
+                if (archiveSpec != null) { var p = archiveSpec.split(":", 3); wf.xetDuyet(Long.parseLong(p[0]), p[1], p.length>2?p[2]:""); return 0; }
             }
             if (resetDb) {
                 try (var c = config.dataSource.getConnection(); var st = c.createStatement()) {

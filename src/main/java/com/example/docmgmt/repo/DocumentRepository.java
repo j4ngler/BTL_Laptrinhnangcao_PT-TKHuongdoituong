@@ -62,7 +62,7 @@ public final class DocumentRepository {
                 st.executeUpdate("UPDATE documents SET state = 'DANG_KY' WHERE state = 'SUBMITTED'");
                 st.executeUpdate("UPDATE documents SET state = 'CHO_XEM_XET' WHERE state = 'CLASSIFIED'");
                 st.executeUpdate("UPDATE documents SET state = 'DA_PHAN_CONG' WHERE state = 'APPROVED'");
-                st.executeUpdate("UPDATE documents SET state = 'DANG_XU_LY' WHERE state = 'ISSUED'");
+                st.executeUpdate("UPDATE documents SET state = 'CHO_DUYET' WHERE state = 'ISSUED'");
                 st.executeUpdate("UPDATE documents SET state = 'HOAN_THANH' WHERE state = 'ARCHIVED'");
             } catch (SQLException e) {
                 // Ignore if columns don't exist yet

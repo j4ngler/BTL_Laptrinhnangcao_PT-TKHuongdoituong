@@ -159,24 +159,24 @@ public class SwingApp {
         if (currentRole == Role.VAN_THU) {
             JMenuItem miTiepNhan = new JMenuItem("1) Tiếp nhận");
             JMenuItem miDangKy = new JMenuItem("2) Đăng ký");
+            JMenuItem miTrinhLanhDao = new JMenuItem("3) Trình lãnh đạo");
             miTiepNhan.addActionListener(e -> doTiepNhan());
             miDangKy.addActionListener(e -> doWorkflowAction("DANG_KY"));
+            miTrinhLanhDao.addActionListener(e -> doWorkflowAction("TRINH_LANH_DAO"));
             menuWorkflow.add(miTiepNhan);
             menuWorkflow.add(miDangKy);
+            menuWorkflow.add(miTrinhLanhDao);
         } else if (currentRole == Role.LANH_DAO) {
-            JMenuItem miXemXet = new JMenuItem("3) Trình & chuyển giao / Xem xét");
-            JMenuItem miPhanCong = new JMenuItem("4) Chỉ đạo / Phân công xử lý");
-            miXemXet.addActionListener(e -> doWorkflowAction("XEM_XET"));
-            miPhanCong.addActionListener(e -> doWorkflowAction("PHAN_CONG"));
-            menuWorkflow.add(miXemXet);
-            menuWorkflow.add(miPhanCong);
+            JMenuItem miChiDao = new JMenuItem("4) Chỉ đạo xử lý");
+            JMenuItem miXetDuyet = new JMenuItem("6) Xét duyệt");
+            miChiDao.addActionListener(e -> doWorkflowAction("CHI_DAO_XU_LY"));
+            miXetDuyet.addActionListener(e -> doWorkflowAction("XET_DUYET"));
+            menuWorkflow.add(miChiDao);
+            menuWorkflow.add(miXetDuyet);
         } else if (currentRole == Role.CAN_BO_CHUYEN_MON) {
-            JMenuItem miBatDau = new JMenuItem("5) Thực hiện xử lý");
-            JMenuItem miHoanThanh = new JMenuItem("6) Xét duyệt/Hoàn tất");
-            miBatDau.addActionListener(e -> doWorkflowAction("BAT_DAU_XU_LY"));
-            miHoanThanh.addActionListener(e -> doWorkflowAction("HOAN_THANH"));
-            menuWorkflow.add(miBatDau);
-            menuWorkflow.add(miHoanThanh);
+            JMenuItem miThucHien = new JMenuItem("5) Thực hiện xử lý");
+            miThucHien.addActionListener(e -> doWorkflowAction("THUC_HIEN_XU_LY"));
+            menuWorkflow.add(miThucHien);
         }
         menuBar.add(menuWorkflow);
         
@@ -443,7 +443,7 @@ public class SwingApp {
             
             String fullNote = classification + "|" + security + "|" + note;
             try {
-                workflowService.xemXet(id, actor, fullNote);
+                workflowService.chiDaoXuLy(id, actor, "System", fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -585,7 +585,7 @@ public class SwingApp {
             
             String fullNote = decision + " - " + note;
             try {
-                workflowService.phanCong(id, actor, assignedTo, fullNote);
+                workflowService.chiDaoXuLy(id, actor, assignedTo, fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -657,7 +657,7 @@ public class SwingApp {
             
             String fullNote = type + " - " + note;
             try {
-                workflowService.batDauXuLy(id, actor, fullNote);
+                workflowService.thucHienXuLy(id, actor, fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -729,7 +729,7 @@ public class SwingApp {
             
             String fullNote = type + " - " + note;
             try {
-                workflowService.hoanThanh(id, actor, fullNote);
+                workflowService.xetDuyet(id, actor, fullNote);
                 reload();
                 dialog.dispose();
             } catch (Exception ex) {
@@ -944,24 +944,24 @@ public class SwingApp {
                     String note1 = JOptionPane.showInputDialog(frame, "Ghi chú đăng ký:", "Đăng ký văn bản", JOptionPane.QUESTION_MESSAGE);
                     workflowService.dangKy(docId, actor, note1);
                     break;
-                case "XEM_XET":
-                    String note2 = JOptionPane.showInputDialog(frame, "Ghi chú xem xét:", "Xem xét văn bản", JOptionPane.QUESTION_MESSAGE);
-                    workflowService.xemXet(docId, actor, note2);
+                case "TRINH_LANH_DAO":
+                    String note2 = JOptionPane.showInputDialog(frame, "Ghi chú trình lãnh đạo:", "Trình lãnh đạo", JOptionPane.QUESTION_MESSAGE);
+                    workflowService.trinhLanhDao(docId, actor, note2);
                     break;
-                case "PHAN_CONG":
-                    String assignedTo = JOptionPane.showInputDialog(frame, "Phân công cho ai:", "Phân công xử lý", JOptionPane.QUESTION_MESSAGE);
+                case "CHI_DAO_XU_LY":
+                    String assignedTo = JOptionPane.showInputDialog(frame, "Phân công cho ai:", "Chỉ đạo xử lý", JOptionPane.QUESTION_MESSAGE);
                     if (assignedTo != null && !assignedTo.trim().isEmpty()) {
-                        String note3 = JOptionPane.showInputDialog(frame, "Hướng dẫn xử lý:", "Phân công xử lý", JOptionPane.QUESTION_MESSAGE);
-                        workflowService.phanCong(docId, actor, assignedTo, note3);
+                        String note3 = JOptionPane.showInputDialog(frame, "Hướng dẫn xử lý:", "Chỉ đạo xử lý", JOptionPane.QUESTION_MESSAGE);
+                        workflowService.chiDaoXuLy(docId, actor, assignedTo, note3);
                     }
                     break;
-                case "BAT_DAU_XU_LY":
-                    String note4 = JOptionPane.showInputDialog(frame, "Ghi chú bắt đầu xử lý:", "Bắt đầu xử lý", JOptionPane.QUESTION_MESSAGE);
-                    workflowService.batDauXuLy(docId, actor, note4);
+                case "THUC_HIEN_XU_LY":
+                    String note4 = JOptionPane.showInputDialog(frame, "Báo cáo kết quả xử lý:", "Thực hiện xử lý", JOptionPane.QUESTION_MESSAGE);
+                    workflowService.thucHienXuLy(docId, actor, note4);
                     break;
-                case "HOAN_THANH":
-                    String note5 = JOptionPane.showInputDialog(frame, "Báo cáo kết quả xử lý:", "Hoàn thành xử lý", JOptionPane.QUESTION_MESSAGE);
-                    workflowService.hoanThanh(docId, actor, note5);
+                case "XET_DUYET":
+                    String note5 = JOptionPane.showInputDialog(frame, "Ghi chú duyệt:", "Xét duyệt", JOptionPane.QUESTION_MESSAGE);
+                    workflowService.xetDuyet(docId, actor, note5);
                     break;
             }
             

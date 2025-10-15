@@ -10,13 +10,14 @@ public final class Models {
         CAN_BO_CHUYEN_MON  // Cán bộ chuyên môn - Thực hiện xử lý văn bản
     }
     public enum DocState { 
-        // Quy trình văn bản đến
-        TIEP_NHAN,      // Tiếp nhận - Văn thư nhận văn bản từ email/bưu chính
-        DANG_KY,        // Đăng ký - Văn thư đăng ký vào hệ thống
-        CHO_XEM_XET,    // Chờ xem xét - Trình lãnh đạo xem xét
-        DA_PHAN_CONG,   // Đã phân công - Lãnh đạo đã chỉ đạo xử lý
-        DANG_XU_LY,     // Đang xử lý - Cán bộ chuyên môn đang thực hiện
-        HOAN_THANH      // Hoàn thành - Đã xử lý xong và báo cáo
+        // Quy trình văn bản đến theo ảnh workflow
+        TIEP_NHAN,      // 1. Tiếp nhận - Văn thư nhận văn bản
+        DANG_KY,        // 2. Đăng ký - Văn thư đăng ký vào hệ thống
+        CHO_XEM_XET,    // 3. Chờ xem xét - Trình lãnh đạo
+        DA_PHAN_CONG,   // 4. Đã phân công - Lãnh đạo đã chỉ đạo xử lý
+        DANG_XU_LY,     // 5. Đang xử lý - Cán bộ chuyên môn thực hiện
+        CHO_DUYET,      // 6. Chờ duyệt - Cán bộ đã xử lý, chờ lãnh đạo duyệt
+        HOAN_THANH      // 7. Hoàn thành - Lãnh đạo đã duyệt xong
     }
     public enum Priority { NORMAL, URGENT, EMERGENCY, FIRE } // Thường, Khẩn, Thượng khẩn, Hỏa tốc
 
