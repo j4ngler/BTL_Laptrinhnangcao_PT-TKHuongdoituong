@@ -1,3 +1,28 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Virtual machine crash logs
+hs_err_pid*
+replay_pid*
+
 # Maven
 target/
 pom.xml.tag
@@ -10,24 +35,17 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# Gradle
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-# IDE
+# IDE files
 .idea/
+*.iws
 *.iml
 *.ipr
-*.iws
 .vscode/
-*.swp
-*.swo
-*~
+.settings/
+.project
+.classpath
 
-# OS
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -36,27 +54,39 @@ build/
 ehthumbs.db
 Thumbs.db
 
-# Logs
-*.log
-logs/
+# Sensitive files - PASSWORDS AND CREDENTIALS
+docs/text
+docs/*.txt
+docs/*.password
+docs/*.secret
+docs/*.key
+docs/*.pem
+docs/*.p12
+docs/*.jks
+docs/*.keystore
+docs/credentials/
+docs/secrets/
+docs/passwords/
 
-# Database
+# Configuration files with sensitive data
+*.properties
+!src/main/resources/application.properties
+config.properties
+database.properties
+gmail-config.properties
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+*.temp
+
+# Application specific
 *.db
 *.sqlite
 *.sqlite3
-
-# Environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Scripts
-*.ps1
-*.bat
-*.sh
-
-# Temporary files
-*.tmp
-*.temp

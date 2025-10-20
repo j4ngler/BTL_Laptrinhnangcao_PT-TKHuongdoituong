@@ -63,11 +63,11 @@
       <version>0.4</version>
     </dependency>
 
-    <!-- Jakarta Mail (IMAP/SMTP) for email integration -->
+    <!-- JavaMail API for Gmail IMAP -->
     <dependency>
       <groupId>com.sun.mail</groupId>
-      <artifactId>jakarta.mail</artifactId>
-      <version>2.0.1</version>
+      <artifactId>javax.mail</artifactId>
+      <version>1.6.2</version>
     </dependency>
 
     <!-- Gmail API for multi-account support -->

@@ -217,6 +217,18 @@ public class SimpleEmailService {
     }
 
     /**
+     * Method được gọi từ SwingApp.doEmail()
+     */
+    public int fetchAndProcessEmails(String email, String password) {
+        System.out.println("SimpleEmailService.fetchAndProcessEmails called");
+        System.out.println("Email: " + email);
+        System.out.println("Password: " + (password != null ? "***" : "null"));
+        
+        // Gọi method hiện có
+        return fetchEmailsFromGmail(email, password);
+    }
+
+    /**
      * Print setup instructions
      */
     public static void printGmailSetupInstructions() {

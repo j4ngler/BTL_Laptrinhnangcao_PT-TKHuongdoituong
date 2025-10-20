@@ -30,14 +30,14 @@ public class SwingApp {
     private JLabel userInfoLabel;
 
     public SwingApp() throws Exception {
-        System.out.println("Đang khởi tạo SwingApp...");
+        System.out.println("Dang khoi tao SwingApp...");
         
         try {
-            System.out.println("Đang kết nối database...");
+            System.out.println("Dang ket noi database...");
             Config config = Config.fromEnv();
             System.out.println("Database connected successfully");
             
-            System.out.println("Đang khởi tạo services...");
+            System.out.println("Dang khoi tao services...");
             this.docService = new DocumentService(config);
             var repo = new DocumentRepository(config.dataSource);
             var ur = new UserRepository(config.dataSource); 
@@ -46,7 +46,7 @@ public class SwingApp {
             this.authService = new AuthenticationService(ur);
             var gridRepo = new com.example.docmgmt.repo.GridFsRepository(config.mongoClient, "docmgmt", "files");
             // Ưu tiên EmailService (IMAP thật) nếu khả dụng, fallback simple
-            this.emailService = new com.example.docmgmt.service.EmailService(repo, gridRepo);
+            this.emailService = new com.example.docmgmt.service.EmailService(repo, gridRepo, config);
             // Auto-sync Gmail: load accounts từ DB và chạy nền nếu có
             try {
                 var gaRepo = new com.example.docmgmt.repo.GmailAccountRepository(config.dataSource);
