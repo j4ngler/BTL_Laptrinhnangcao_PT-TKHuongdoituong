@@ -11,6 +11,8 @@ public class RegisterDialog extends JDialog {
     private JTextField usernameField;
     private JPasswordField passwordField;
     private JComboBox<Role> roleCombo;
+    private JTextField positionField;
+    private JTextField organizationField;
     private boolean success = false;
 
     public RegisterDialog(Dialog owner, AuthenticationService authService) {
@@ -20,7 +22,7 @@ public class RegisterDialog extends JDialog {
     }
 
     private void init() {
-        setSize(380, 230);
+        setSize(420, 320);
         setLocationRelativeTo(getOwner());
         setLayout(new BorderLayout());
 
@@ -32,8 +34,27 @@ public class RegisterDialog extends JDialog {
 
         usernameField = new JTextField(20);
         passwordField = new JPasswordField(20);
-        roleCombo = new JComboBox<>(Role.values());
-        roleCombo.setSelectedItem(Role.VAN_THU);
+        roleCombo = new JComboBox<>(new DefaultComboBoxModel<>(new Role[]{ Role.CAN_BO_CHUYEN_MON }));
+        roleCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Role r) {
+                    String vn = switch (r) {
+                        case QUAN_TRI -> "Quản trị";
+                        case VAN_THU -> "Văn thư";
+                        case LANH_DAO -> "Lãnh đạo";
+                        case CAN_BO_CHUYEN_MON -> "Cán bộ chuyên môn";
+                    };
+                    setText(vn);
+                }
+                return c;
+            }
+        });
+        roleCombo.setSelectedItem(Role.CAN_BO_CHUYEN_MON);
+        roleCombo.setEnabled(false); // khóa chọn vai trò, mặc định CB chuyên môn
+        positionField = new JTextField(20);
+        organizationField = new JTextField(20);
 
         gbc.gridx=0; gbc.gridy=0; panel.add(new JLabel("Tên đăng nhập:"), gbc);
         gbc.gridx=1; gbc.anchor = GridBagConstraints.WEST; panel.add(usernameField, gbc);
@@ -41,6 +62,10 @@ public class RegisterDialog extends JDialog {
         gbc.gridx=1; gbc.anchor = GridBagConstraints.WEST; panel.add(passwordField, gbc);
         gbc.gridx=0; gbc.gridy=2; gbc.anchor = GridBagConstraints.EAST; panel.add(new JLabel("Vai trò:"), gbc);
         gbc.gridx=1; gbc.anchor = GridBagConstraints.WEST; panel.add(roleCombo, gbc);
+        gbc.gridx=0; gbc.gridy=3; gbc.anchor = GridBagConstraints.EAST; panel.add(new JLabel("Chức vụ:"), gbc);
+        gbc.gridx=1; gbc.anchor = GridBagConstraints.WEST; panel.add(positionField, gbc);
+        gbc.gridx=0; gbc.gridy=4; gbc.anchor = GridBagConstraints.EAST; panel.add(new JLabel("Đơn vị/Ban ngành:"), gbc);
+        gbc.gridx=1; gbc.anchor = GridBagConstraints.WEST; panel.add(organizationField, gbc);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton btnOk = new JButton("Đăng ký");
@@ -58,12 +83,20 @@ public class RegisterDialog extends JDialog {
         String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
         Role role = (Role) roleCombo.getSelectedItem();
+        String position = positionField.getText().trim();
+        String organization = organizationField.getText().trim();
 
-        if (username.isEmpty() || password.isEmpty()) {
+        if (username.isEmpty() || password.isEmpty() || position.isEmpty() || organization.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Nhập đầy đủ thông tin!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        boolean ok = authService.registerUser(username, password, role);
+        // Kiểm tra trùng tên người dùng
+        if (authService.userExists(username)) {
+            JOptionPane.showMessageDialog(this, "Tên đăng nhập đã tồn tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        boolean ok = authService.registerUser(username, password, role, position, organization);
         if (ok) {
             success = true;
             JOptionPane.showMessageDialog(this, "Đăng ký thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);

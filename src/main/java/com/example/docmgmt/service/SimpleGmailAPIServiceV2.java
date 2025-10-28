@@ -130,7 +130,8 @@ public class SimpleGmailAPIServiceV2 {
                 null, // Doc year
                 null, // Deadline
                 null, // Assigned to
-                priority
+                priority,
+                null // Note
             );
             
             return doc;

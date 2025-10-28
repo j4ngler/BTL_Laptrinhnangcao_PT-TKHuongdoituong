@@ -1,58 +1,156 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-  <classpathentry kind="src" path="src/main/java" including="**/*.java"/>
-  <classpathentry kind="src" path="src/main/resources" excluding="**/*.java"/>
-  <classpathentry kind="output" path="target/classes"/>
-  <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-  <classpathentry kind="var" path="M2_REPO/info/picocli/picocli/4.7.6/picocli-4.7.6.jar" sourcepath="M2_REPO/info/picocli/picocli/4.7.6/picocli-4.7.6-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar" sourcepath="M2_REPO/org/postgresql/postgresql/42.7.4/postgresql-42.7.4-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/checkerframework/checker-qual/3.12.0/checker-qual-3.12.0.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/mongodb/mongodb-driver-sync/5.1.2/mongodb-driver-sync-5.1.2.jar" sourcepath="M2_REPO/org/mongodb/mongodb-driver-sync/5.1.2/mongodb-driver-sync-5.1.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/mongodb/bson/5.1.2/bson-5.1.2.jar" sourcepath="M2_REPO/org/mongodb/bson/5.1.2/bson-5.1.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/mongodb/mongodb-driver-core/5.1.2/mongodb-driver-core-5.1.2.jar" sourcepath="M2_REPO/org/mongodb/mongodb-driver-core/5.1.2/mongodb-driver-core-5.1.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/mongodb/bson-record-codec/5.1.2/bson-record-codec-5.1.2.jar" sourcepath="M2_REPO/org/mongodb/bson-record-codec/5.1.2/bson-record-codec-5.1.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/zaxxer/HikariCP/5.1.0/HikariCP-5.1.0.jar" sourcepath="M2_REPO/com/zaxxer/HikariCP/5.1.0/HikariCP-5.1.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-simple/2.0.13/slf4j-simple-2.0.13.jar" sourcepath="M2_REPO/org/slf4j/slf4j-simple/2.0.13/slf4j-simple-2.0.13-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-nop/1.7.36/slf4j-nop-1.7.36.jar" sourcepath="M2_REPO/org/slf4j/slf4j-nop/1.7.36/slf4j-nop-1.7.36-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/mindrot/jbcrypt/0.4/jbcrypt-0.4.jar" sourcepath="M2_REPO/org/mindrot/jbcrypt/0.4/jbcrypt-0.4-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/sun/mail/jakarta.mail/2.0.1/jakarta.mail-2.0.1.jar" sourcepath="M2_REPO/com/sun/mail/jakarta.mail/2.0.1/jakarta.mail-2.0.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/sun/activation/jakarta.activation/2.0.1/jakarta.activation-2.0.1.jar" sourcepath="M2_REPO/com/sun/activation/jakarta.activation/2.0.1/jakarta.activation-2.0.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/apis/google-api-services-gmail/v1-rev20220404-1.32.1/google-api-services-gmail-v1-rev20220404-1.32.1.jar" sourcepath="M2_REPO/com/google/apis/google-api-services-gmail/v1-rev20220404-1.32.1/google-api-services-gmail-v1-rev20220404-1.32.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/api-client/google-api-client/2.0.0/google-api-client-2.0.0.jar" sourcepath="M2_REPO/com/google/api-client/google-api-client/2.0.0/google-api-client-2.0.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/oauth-client/google-oauth-client/1.34.1/google-oauth-client-1.34.1.jar" sourcepath="M2_REPO/com/google/oauth-client/google-oauth-client/1.34.1/google-oauth-client-1.34.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/http-client/google-http-client/1.42.1/google-http-client-1.42.1.jar" sourcepath="M2_REPO/com/google/http-client/google-http-client/1.42.1/google-http-client-1.42.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/httpcomponents/httpclient/4.5.13/httpclient-4.5.13.jar" sourcepath="M2_REPO/org/apache/httpcomponents/httpclient/4.5.13/httpclient-4.5.13-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/httpcomponents/httpcore/4.4.15/httpcore-4.4.15.jar" sourcepath="M2_REPO/org/apache/httpcomponents/httpcore/4.4.15/httpcore-4.4.15-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/commons-logging/commons-logging/1.2/commons-logging-1.2.jar" sourcepath="M2_REPO/commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/commons-codec/commons-codec/1.11/commons-codec-1.11.jar" sourcepath="M2_REPO/commons-codec/commons-codec/1.11/commons-codec-1.11-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar" sourcepath="M2_REPO/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/guava/guava/31.1-jre/guava-31.1-jre.jar" sourcepath="M2_REPO/com/google/guava/guava/31.1-jre/guava-31.1-jre-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar" sourcepath="M2_REPO/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/errorprone/error_prone_annotations/2.11.0/error_prone_annotations-2.11.0.jar" sourcepath="M2_REPO/com/google/errorprone/error_prone_annotations/2.11.0/error_prone_annotations-2.11.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/j2objc/j2objc-annotations/1.3/j2objc-annotations-1.3.jar" sourcepath="M2_REPO/com/google/j2objc/j2objc-annotations/1.3/j2objc-annotations-1.3-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/io/opencensus/opencensus-api/0.31.1/opencensus-api-0.31.1.jar" sourcepath="M2_REPO/io/opencensus/opencensus-api/0.31.1/opencensus-api-0.31.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/io/grpc/grpc-context/1.27.2/grpc-context-1.27.2.jar" sourcepath="M2_REPO/io/grpc/grpc-context/1.27.2/grpc-context-1.27.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/io/opencensus/opencensus-contrib-http-util/0.31.1/opencensus-contrib-http-util-0.31.1.jar" sourcepath="M2_REPO/io/opencensus/opencensus-contrib-http-util/0.31.1/opencensus-contrib-http-util-0.31.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/http-client/google-http-client-gson/1.43.3/google-http-client-gson-1.43.3.jar" sourcepath="M2_REPO/com/google/http-client/google-http-client-gson/1.43.3/google-http-client-gson-1.43.3-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar" sourcepath="M2_REPO/com/google/code/gson/gson/2.10.1/gson-2.10.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/http-client/google-http-client-apache-v2/1.42.1/google-http-client-apache-v2-1.42.1.jar" sourcepath="M2_REPO/com/google/http-client/google-http-client-apache-v2/1.42.1/google-http-client-apache-v2-1.42.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/oauth-client/google-oauth-client-jetty/1.34.1/google-oauth-client-jetty-1.34.1.jar" sourcepath="M2_REPO/com/google/oauth-client/google-oauth-client-jetty/1.34.1/google-oauth-client-jetty-1.34.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/oauth-client/google-oauth-client-java6/1.34.1/google-oauth-client-java6-1.34.1.jar" sourcepath="M2_REPO/com/google/oauth-client/google-oauth-client-java6/1.34.1/google-oauth-client-java6-1.34.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/auth/google-auth-library-oauth2-http/1.11.0/google-auth-library-oauth2-http-1.11.0.jar" sourcepath="M2_REPO/com/google/auth/google-auth-library-oauth2-http/1.11.0/google-auth-library-oauth2-http-1.11.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/auto/value/auto-value-annotations/1.9/auto-value-annotations-1.9.jar" sourcepath="M2_REPO/com/google/auto/value/auto-value-annotations/1.9/auto-value-annotations-1.9-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/auth/google-auth-library-credentials/1.11.0/google-auth-library-credentials-1.11.0.jar" sourcepath="M2_REPO/com/google/auth/google-auth-library-credentials/1.11.0/google-auth-library-credentials-1.11.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/api-client/google-api-client-gson/2.0.0/google-api-client-gson-2.0.0.jar" sourcepath="M2_REPO/com/google/api-client/google-api-client-gson/2.0.0/google-api-client-gson-2.0.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/api-client/google-api-client-jackson2/2.0.0/google-api-client-jackson2-2.0.0.jar" sourcepath="M2_REPO/com/google/api-client/google-api-client-jackson2/2.0.0/google-api-client-jackson2-2.0.0-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/google/http-client/google-http-client-jackson2/1.43.3/google-http-client-jackson2-1.43.3.jar" sourcepath="M2_REPO/com/google/http-client/google-http-client-jackson2/1.43.3/google-http-client-jackson2-1.43.3-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/fasterxml/jackson/core/jackson-core/2.14.2/jackson-core-2.14.2.jar" sourcepath="M2_REPO/com/fasterxml/jackson/core/jackson-core/2.14.2/jackson-core-2.14.2-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-controls/21.0.3/javafx-controls-21.0.3.jar" sourcepath="M2_REPO/org/openjfx/javafx-controls/21.0.3/javafx-controls-21.0.3-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-controls/21.0.3/javafx-controls-21.0.3-win.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-graphics/21.0.3/javafx-graphics-21.0.3.jar" sourcepath="M2_REPO/org/openjfx/javafx-graphics/21.0.3/javafx-graphics-21.0.3-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-graphics/21.0.3/javafx-graphics-21.0.3-win.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-base/21.0.3/javafx-base-21.0.3.jar" sourcepath="M2_REPO/org/openjfx/javafx-base/21.0.3/javafx-base-21.0.3-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-base/21.0.3/javafx-base-21.0.3-win.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-fxml/21.0.3/javafx-fxml-21.0.3.jar" sourcepath="M2_REPO/org/openjfx/javafx-fxml/21.0.3/javafx-fxml-21.0.3-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/openjfx/javafx-fxml/21.0.3/javafx-fxml-21.0.3-win.jar"/>
+	<classpathentry excluding="**" kind="src" output="target/test-classes" path="src/test/resources">
+		<attributes>
+			<attribute name="test" value="true"/>
+			<attribute name="optional" value="true"/>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="resource" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="target/test-classes" path="src/test/java">
+		<attributes>
+			<attribute name="test" value="true"/>
+			<attribute name="optional" value="true"/>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry excluding="**" kind="src" output="target/classes" path="src/main/resources">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="resource" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="target/classes" path="src/main/java">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="build/classes/java/test" path="build/generated/sources/annotationProcessor/java/test">
+		<attributes>
+			<attribute name="test" value="true"/>
+			<attribute name="optional" value="true"/>
+			<attribute name="gradle.buildServer" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="build/classes/java/main" path="build/generated/sources/annotationProcessor/java/main">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="gradle.buildServer" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-17">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-simple/2.0.13/be11a3f05f7cf546524b07ad252719d840f4daed/slf4j-simple-2.0.13.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-simple/2.0.13/3d41ed2d64c1d54887fd01a1c1242f400768d52e/slf4j-simple-2.0.13-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.slf4j"/>
+			<attribute name="artifactId" value="slf4j-simple"/>
+			<attribute name="version" value="2.0.13"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.postgresql/postgresql/42.7.4/264310fd7b2cd76738787dc0b9f7ea2e3b11adc1/postgresql-42.7.4.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.postgresql/postgresql/42.7.4/d8c41e67273bdc74b1d9a9c713bbdf5cef0e52ea/postgresql-42.7.4-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.postgresql"/>
+			<attribute name="artifactId" value="postgresql"/>
+			<attribute name="version" value="42.7.4"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/info.picocli/picocli/4.7.6/77c2cb87814b6a03d431fc856024a9f8ff605ad4/picocli-4.7.6.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/info.picocli/picocli/4.7.6/b85b06a050ffa9fa8c75fd6e386b54718d54edbd/picocli-4.7.6-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="info.picocli"/>
+			<attribute name="artifactId" value="picocli"/>
+			<attribute name="version" value="4.7.6"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/bson/5.1.2/2a69aa2b3e17dd7f6a581ad89af3940966c4a7f1/bson-5.1.2.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/bson/5.1.2/d822481dc29baaceae35b47a88d75a9ffb0bf890/bson-5.1.2-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.mongodb"/>
+			<attribute name="artifactId" value="bson"/>
+			<attribute name="version" value="5.1.2"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/mongodb-driver-sync/5.1.2/11d80a754eae0d838eb3e88570ba9a7fa7fdc7a6/mongodb-driver-sync-5.1.2.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/mongodb-driver-sync/5.1.2/82735b7c058918af09b1babede73c162a26a5264/mongodb-driver-sync-5.1.2-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.mongodb"/>
+			<attribute name="artifactId" value="mongodb-driver-sync"/>
+			<attribute name="version" value="5.1.2"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/mongodb-driver-core/5.1.2/48e3b542e9f461a3b69948da027043d7268264d2/mongodb-driver-core-5.1.2.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/mongodb-driver-core/5.1.2/572833ae632adeb7155cacf325d5ffc9ae88b245/mongodb-driver-core-5.1.2-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.mongodb"/>
+			<attribute name="artifactId" value="mongodb-driver-core"/>
+			<attribute name="version" value="5.1.2"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/com.zaxxer/HikariCP/5.1.0/8c96e36c14461fc436bb02b264b96ef3ca5dca8c/HikariCP-5.1.0.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/com.zaxxer/HikariCP/5.1.0/c13934e9a36a320fac60406b12512a7a54c17699/HikariCP-5.1.0-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="com.zaxxer"/>
+			<attribute name="artifactId" value="HikariCP"/>
+			<attribute name="version" value="5.1.0"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-qual/3.42.0/638ec33f363a94d41a4f03c3e7d3dcfba64e402d/checker-qual-3.42.0.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-qual/3.42.0/49cc9a760cebbbcd13be06679a224a1ecc85f884/checker-qual-3.42.0-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.checkerframework"/>
+			<attribute name="artifactId" value="checker-qual"/>
+			<attribute name="version" value="3.42.0"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/2.0.13/80229737f704b121a318bba5d5deacbcf395bc77/slf4j-api-2.0.13.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/2.0.13/e7a3edf3c9b41ce9d4daeee609fc59cb2730f67f/slf4j-api-2.0.13-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.slf4j"/>
+			<attribute name="artifactId" value="slf4j-api"/>
+			<attribute name="version" value="2.0.13"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/bson-record-codec/5.1.2/c57471412dd775c5352f61c30e3333927e1ba80c/bson-record-codec-5.1.2.jar" sourcepath="C:/Users/Admin/.gradle/caches/modules-2/files-2.1/org.mongodb/bson-record-codec/5.1.2/be6f8dd3a856e2eba6f24f223722309350bbb965/bson-record-codec-5.1.2-sources.jar">
+		<attributes>
+			<attribute name="gradle.buildServer" value="true"/>
+			<attribute name="groupId" value="org.mongodb"/>
+			<attribute name="artifactId" value="bson-record-codec"/>
+			<attribute name="version" value="5.1.2"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" path="target/generated-sources/annotations">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+			<attribute name="ignore_optional_problems" value="true"/>
+			<attribute name="m2e-apt" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="target/test-classes" path="target/generated-test-sources/test-annotations">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+			<attribute name="ignore_optional_problems" value="true"/>
+			<attribute name="m2e-apt" value="true"/>
+			<attribute name="test" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="target/classes"/>
 </classpath>

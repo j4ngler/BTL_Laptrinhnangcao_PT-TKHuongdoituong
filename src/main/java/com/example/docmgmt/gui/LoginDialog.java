@@ -1,6 +1,5 @@
 package com.example.docmgmt.gui;
 
-import com.example.docmgmt.domain.Models.Role;
 import com.example.docmgmt.service.AuthenticationService;
 
 import javax.swing.*;
@@ -11,7 +10,6 @@ public class LoginDialog extends JDialog {
     private boolean loginSuccess = false;
     private JTextField usernameField;
     private JPasswordField passwordField;
-    private JComboBox<Role> roleCombo;
 
     public LoginDialog(Frame parent, AuthenticationService authService) {
         super(parent, "Đăng nhập hệ thống", true);
@@ -28,10 +26,6 @@ public class LoginDialog extends JDialog {
     private void initComponents() {
         usernameField = new JTextField(20);
         passwordField = new JPasswordField(20);
-        roleCombo = new JComboBox<>(Role.values());
-        
-        // Set default role
-        roleCombo.setSelectedItem(Role.VAN_THU);
     }
 
     private void setupLayout() {
@@ -63,12 +57,6 @@ public class LoginDialog extends JDialog {
         mainPanel.add(new JLabel("Mật khẩu:"), gbc);
         gbc.gridx = 1; gbc.anchor = GridBagConstraints.WEST;
         mainPanel.add(passwordField, gbc);
-
-        // Role
-        gbc.gridx = 0; gbc.gridy = 2; gbc.anchor = GridBagConstraints.EAST;
-        mainPanel.add(new JLabel("Vai trò:"), gbc);
-        gbc.gridx = 1; gbc.anchor = GridBagConstraints.WEST;
-        mainPanel.add(roleCombo, gbc);
 
         add(mainPanel, BorderLayout.CENTER);
 
@@ -107,7 +95,6 @@ public class LoginDialog extends JDialog {
     private void performLogin() {
         String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
-        Role selectedRole = (Role) roleCombo.getSelectedItem();
 
         if (username.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!", 
@@ -116,18 +103,11 @@ public class LoginDialog extends JDialog {
         }
 
         if (authService.login(username, password)) {
-            // Kiểm tra vai trò
-            if (authService.hasRole(selectedRole)) {
-                loginSuccess = true;
-                JOptionPane.showMessageDialog(this, 
-                    "Đăng nhập thành công!\nVai trò: " + authService.getCurrentUserRoleName(), 
-                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, 
-                    "Người dùng không có quyền truy cập với vai trò này!", 
-                    "Lỗi quyền truy cập", JOptionPane.ERROR_MESSAGE);
-            }
+            loginSuccess = true;
+            JOptionPane.showMessageDialog(this, 
+                "Đăng nhập thành công!\nVai trò: " + authService.getCurrentUserRoleName(), 
+                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            dispose();
         } else {
             JOptionPane.showMessageDialog(this, 
                 "Tên đăng nhập hoặc mật khẩu không đúng!", 
@@ -145,37 +125,5 @@ public class LoginDialog extends JDialog {
 
     public boolean isLoginSuccessful() {
         return loginSuccess;
-    }
-
-    public static void main(String[] args) {
-        // Test dialog
-        SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            
-            // Mock authentication service for testing
-            AuthenticationService mockAuth = new AuthenticationService(null) {
-                @Override
-                public boolean login(String username, String password) {
-                    return "admin".equals(username) && "123".equals(password);
-                }
-                
-                @Override
-                public boolean hasRole(Role role) {
-                    return true;
-                }
-                
-                @Override
-                public String getCurrentUserRoleName() {
-                    return "Văn thư";
-                }
-            };
-            
-            LoginDialog dialog = new LoginDialog(null, mockAuth);
-            dialog.setVisible(true);
-        });
     }
 }

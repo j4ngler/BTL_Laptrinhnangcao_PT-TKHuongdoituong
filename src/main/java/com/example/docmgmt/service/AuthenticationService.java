@@ -25,6 +25,14 @@ public class AuthenticationService {
             }
 
             if (PasswordUtil.verifyPassword(password, user.passwordHash())) {
+                // Chỉ cho đăng nhập khi đã được duyệt
+                try {
+                    var statusField = user.getClass().getRecordComponents(); // record: lấy qua phương thức
+                } catch (Exception ignore) {}
+                if (user.status() != null && !"APPROVED".equals(user.status().name())) {
+                    System.err.println("Tài khoản chưa được duyệt");
+                    return false;
+                }
                 this.currentUser = user;
                 return true;
             }
@@ -69,6 +77,7 @@ public class AuthenticationService {
      */
     public String getRoleDisplayName(Role role) {
         return switch (role) {
+            case QUAN_TRI -> "Quản trị";
             case VAN_THU -> "Văn thư";
             case LANH_DAO -> "Lãnh đạo";
             case CAN_BO_CHUYEN_MON -> "Cán bộ chuyên môn";
@@ -86,10 +95,10 @@ public class AuthenticationService {
     /**
      * Đăng ký người dùng mới (chỉ dành cho admin)
      */
-    public boolean registerUser(String username, String password, Role role) {
+    public boolean registerUser(String username, String password, Role role, String position, String organization) {
         try {
             String hashedPassword = PasswordUtil.hashPassword(password);
-            userRepo.addUser(username, hashedPassword, role);
+            userRepo.addUser(username, hashedPassword, role, position, organization);
             return true;
         } catch (Exception e) {
             System.err.println("Lỗi đăng ký: " + e.getMessage());
@@ -106,6 +115,18 @@ public class AuthenticationService {
         } catch (Exception e) {
             System.err.println("Lỗi lấy danh sách người dùng: " + e.getMessage());
             return List.of();
+        }
+    }
+
+    /**
+     * Kiểm tra tên đăng nhập đã tồn tại chưa
+     */
+    public boolean userExists(String username) {
+        try {
+            return userRepo.getByUsername(username) != null;
+        } catch (Exception e) {
+            System.err.println("Lỗi kiểm tra tồn tại người dùng: " + e.getMessage());
+            return false;
         }
     }
 }

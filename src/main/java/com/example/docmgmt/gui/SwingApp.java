@@ -69,8 +69,8 @@ public class SwingApp {
 
         // Khởi tạo các biến cần thiết trước
         frame = new JFrame("Quản lý văn bản đến");
-        model = new DefaultTableModel(new Object[]{"ID","Tiêu đề","Trạng thái","Tạo lúc","Số/VB","Thời hạn","Độ ưu tiên","Phân công"}, 0) {
-            public boolean isCellEditable(int r, int c) { return false; }
+        model = new DefaultTableModel(new Object[]{"ID","Tiêu đề","Trạng thái","Tạo lúc","Độ ưu tiên","Phân công","Ghi chú","Quy trình"}, 0) {
+            public boolean isCellEditable(int r, int c) { return c == 7; }
         };
         table = new JTable(model);
         searchField = new JTextField(20);
@@ -117,6 +117,21 @@ public class SwingApp {
 
         frame.getContentPane().add(top, BorderLayout.NORTH);
         frame.getContentPane().add(scroll, BorderLayout.CENTER);
+        // Renderer/Editor cho nút Quy trình
+        int workflowColIndex = model.findColumn("Quy trình");
+        table.getColumnModel().getColumn(workflowColIndex).setCellRenderer(new ButtonRenderer());
+        table.getColumnModel().getColumn(workflowColIndex).setCellEditor(new ButtonEditor(new JCheckBox()));
+        // Cấu hình độ rộng cột sau khi tạo bảng
+        configureColumnWidths();
+        // Double-click mở chi tiết ngay
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e)) {
+                    doDetails();
+                }
+            }
+        });
         
         // Menu bar với các thao tác
         Role currentRole = authService.getCurrentUser().role();
@@ -124,7 +139,57 @@ public class SwingApp {
         
         btnLogout.addActionListener(e -> doLogout());
 
-        reload();
+        // Nếu là admin, hiển thị Dashboard
+        if (currentRole == Role.QUAN_TRI) {
+            showAdminDashboard();
+        } else {
+            reload();
+        }
+    }
+
+    private void showAdminDashboard() {
+        try {
+            var docRepo = new DocumentRepository(docService.getDataSource());
+            var userRepo = new UserRepository(docService.getDataSource());
+            userRepo.migrate();
+            
+            AdminDashboard dashboard = new AdminDashboard(frame, docRepo, userRepo);
+            frame.getContentPane().removeAll();
+            frame.getContentPane().add(dashboard, BorderLayout.CENTER);
+            frame.getContentPane().revalidate();
+            frame.getContentPane().repaint();
+        } catch (Exception e) {
+            showError(e);
+        }
+    }
+
+    private void configureColumnWidths() {
+        // ID
+        int colId = model.findColumn("ID");
+        table.getColumnModel().getColumn(colId).setPreferredWidth(60);
+        table.getColumnModel().getColumn(colId).setMaxWidth(70);
+        // Tiêu đề
+        int colTitle = model.findColumn("Tiêu đề");
+        table.getColumnModel().getColumn(colTitle).setPreferredWidth(360);
+        // Trạng thái
+        int colState = model.findColumn("Trạng thái");
+        table.getColumnModel().getColumn(colState).setPreferredWidth(110);
+        // Tạo lúc
+        int colCreated = model.findColumn("Tạo lúc");
+        table.getColumnModel().getColumn(colCreated).setPreferredWidth(170);
+        // Độ ưu tiên
+        int colPriority = model.findColumn("Độ ưu tiên");
+        table.getColumnModel().getColumn(colPriority).setPreferredWidth(90);
+        // Phân công
+        int colAssign = model.findColumn("Phân công");
+        table.getColumnModel().getColumn(colAssign).setPreferredWidth(150);
+        // Ghi chú
+        int colNote = model.findColumn("Ghi chú");
+        table.getColumnModel().getColumn(colNote).setPreferredWidth(220);
+        // Quy trình (nút ▼)
+        int colFlow = model.findColumn("Quy trình");
+        table.getColumnModel().getColumn(colFlow).setPreferredWidth(72);
+        table.getColumnModel().getColumn(colFlow).setMaxWidth(84);
     }
 
     private JMenuBar buildMenuBar(Role currentRole) {
@@ -156,7 +221,7 @@ public class SwingApp {
         menuBar.add(menuActions);
         
         JMenu menuWorkflow = new JMenu("Quy trình");
-        if (currentRole == Role.VAN_THU) {
+        if (currentRole == Role.QUAN_TRI || currentRole == Role.VAN_THU) {
             JMenuItem miTiepNhan = new JMenuItem("1) Tiếp nhận");
             JMenuItem miDangKy = new JMenuItem("2) Đăng ký");
             JMenuItem miTrinhLanhDao = new JMenuItem("3) Trình lãnh đạo");
@@ -166,19 +231,36 @@ public class SwingApp {
             menuWorkflow.add(miTiepNhan);
             menuWorkflow.add(miDangKy);
             menuWorkflow.add(miTrinhLanhDao);
-        } else if (currentRole == Role.LANH_DAO) {
+        }
+        if (currentRole == Role.QUAN_TRI || currentRole == Role.LANH_DAO) {
             JMenuItem miChiDao = new JMenuItem("4) Chỉ đạo xử lý");
             JMenuItem miXetDuyet = new JMenuItem("6) Xét duyệt");
             miChiDao.addActionListener(e -> doWorkflowAction("CHI_DAO_XU_LY"));
             miXetDuyet.addActionListener(e -> doWorkflowAction("XET_DUYET"));
             menuWorkflow.add(miChiDao);
             menuWorkflow.add(miXetDuyet);
-        } else if (currentRole == Role.CAN_BO_CHUYEN_MON) {
+        }
+        if (currentRole == Role.QUAN_TRI || currentRole == Role.CAN_BO_CHUYEN_MON) {
             JMenuItem miThucHien = new JMenuItem("5) Thực hiện xử lý");
             miThucHien.addActionListener(e -> doWorkflowAction("THUC_HIEN_XU_LY"));
             menuWorkflow.add(miThucHien);
         }
         menuBar.add(menuWorkflow);
+
+        // Menu Quản trị (chỉ hiển thị cho QUAN_TRI)
+        if (currentRole == Role.QUAN_TRI) {
+            JMenu menuAdmin = new JMenu("Quản trị");
+            JMenuItem miUserMgmt = new JMenuItem("Quản lý người dùng...");
+            miUserMgmt.addActionListener(e -> {
+                try {
+                    var ur = new UserRepository(docService.getDataSource());
+                    ur.migrate();
+                    new UserManagementDialog(frame, ur).setVisible(true);
+                } catch (Exception ex) { showError(ex); }
+            });
+            menuAdmin.add(miUserMgmt);
+            menuBar.add(menuAdmin);
+        }
         
         JMenu menuEmail = new JMenu("Email");
         JMenuItem miFetch = new JMenuItem("Nhận từ Gmail...");
@@ -203,15 +285,13 @@ public class SwingApp {
             List<Models.Document> docs = docService.listDocuments();
             model.setRowCount(0);
             for (var d : docs) {
-                String docNumber = d.docNumber() != null ? d.docNumber() + "/" + d.docYear() : "";
-                String deadline = d.deadline() != null ? d.deadline().toString().substring(0, 16) : "";
                 String priority = d.priority() != null ? getPriorityDisplayName(d.priority()) : "Thường";
                 String assignedTo = d.assignedTo() != null ? d.assignedTo() : "Chưa phân công";
-                
+                String note = d.note() != null ? d.note() : "";
                 model.addRow(new Object[]{
-                    d.id(), d.title(), d.state().name(), 
-                    d.createdAt().toString().substring(0, 19), docNumber,
-                    deadline, priority, assignedTo
+                    d.id(), d.title(), getStateDisplayName(d.state().name()),
+                    d.createdAt().toString().substring(0, 19),
+                    priority, assignedTo, note, "▼"
                 });
             }
         } catch (Exception ex) { showError(ex); }
@@ -235,15 +315,13 @@ public class SwingApp {
             List<Models.Document> docs = (kw == null || kw.isBlank()) ? docService.listDocuments() : docService.searchByTitle(kw);
             model.setRowCount(0);
             for (var d : docs) {
-                String docNumber = d.docNumber() != null ? d.docNumber() + "/" + d.docYear() : "";
-                String deadline = d.deadline() != null ? d.deadline().toString().substring(0, 16) : "";
                 String priority = d.priority() != null ? getPriorityDisplayName(d.priority()) : "Thường";
                 String assignedTo = d.assignedTo() != null ? d.assignedTo() : "Chưa phân công";
-                
+                String note = d.note() != null ? d.note() : "";
                 model.addRow(new Object[]{
-                    d.id(), d.title(), d.state().name(), 
-                    d.createdAt().toString().substring(0, 19), docNumber,
-                    deadline, priority, assignedTo
+                    d.id(), d.title(), getStateDisplayName(d.state().name()),
+                    d.createdAt().toString().substring(0, 19),
+                    priority, assignedTo, note, "▼"
                 });
             }
         } catch (Exception ex) { showError(ex); }
@@ -256,11 +334,10 @@ public class SwingApp {
             List<Models.Document> docs = (kw.isBlank()) ? docService.listDocuments() : docService.searchByTitle(kw);
             model.setRowCount(0);
             for (var d : docs) {
-                String docNumber = d.docNumber() != null ? d.docNumber() + "/" + d.docYear() : "";
-                String deadline = d.deadline() != null ? d.deadline().toString().substring(0, 16) : "";
                 String priority = d.priority() != null ? getPriorityDisplayName(d.priority()) : "Thường";
                 String assignedTo = d.assignedTo() != null ? d.assignedTo() : "Chưa phân công";
-                model.addRow(new Object[]{ d.id(), d.title(), d.state().name(), d.createdAt().toString().substring(0, 19), docNumber, deadline, priority, assignedTo });
+                String note = d.note() != null ? d.note() : "";
+                model.addRow(new Object[]{ d.id(), d.title(), getStateDisplayName(d.state().name()), d.createdAt().toString().substring(0, 19), priority, assignedTo, note, "▼" });
             }
         } catch (Exception ex) { showError(ex); }
     }
@@ -771,7 +848,7 @@ public class SwingApp {
         gbc.gridx = 0; gbc.gridy = 2; gbc.fill = GridBagConstraints.NONE;
         infoPanel.add(new JLabel("Trạng thái:"), gbc);
         gbc.gridx = 1;
-        infoPanel.add(new JLabel(doc.state().toString()), gbc);
+        infoPanel.add(new JLabel(getStateDisplayName(doc.state().name())), gbc);
         
         gbc.gridx = 0; gbc.gridy = 3;
         infoPanel.add(new JLabel("Tạo lúc:"), gbc);
@@ -965,7 +1042,7 @@ public class SwingApp {
                     break;
             }
             
-            info("Thực hiện " + action + " thành công!");
+            info("Thực hiện " + getActionDisplayName(action) + " thành công!");
             reload();
             
         } catch (Exception e) {
@@ -974,6 +1051,117 @@ public class SwingApp {
     }
 
     public void show() { frame.setVisible(true); }
+
+    private String getStateDisplayName(String state) {
+        if (state == null) return "";
+        return switch (state) {
+            case "TIEP_NHAN" -> "Tiếp nhận";
+            case "DANG_KY" -> "Đăng ký";
+            case "CHO_XEM_XET" -> "Chờ xem xét";
+            case "DA_PHAN_CONG" -> "Đã phân công";
+            case "DANG_XU_LY" -> "Đang xử lý";
+            case "HOAN_THANH" -> "Hoàn thành";
+            default -> state;
+        };
+    }
+
+    private String getActionDisplayName(String action) {
+        if (action == null) return "";
+        return switch (action) {
+            case "DANG_KY" -> "Đăng ký";
+            case "TRINH_LANH_DAO" -> "Trình lãnh đạo";
+            case "CHI_DAO_XU_LY" -> "Chỉ đạo xử lý";
+            case "THUC_HIEN_XU_LY" -> "Thực hiện xử lý";
+            case "XET_DUYET" -> "Xét duyệt";
+            default -> action;
+        };
+    }
+
+    // Renderer cho nút trong bảng
+    private static class ButtonRenderer extends JButton implements javax.swing.table.TableCellRenderer {
+        public ButtonRenderer() {
+            setOpaque(true);
+            setMargin(new Insets(0,0,0,0));
+            setFocusable(false);
+        }
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            setText("▼");
+            setPreferredSize(new Dimension(24, Math.max(18, table.getRowHeight()-8)));
+            return this;
+        }
+    }
+
+    // Editor cho nút trong bảng, khi click mở menu chọn quy trình
+    private class ButtonEditor extends DefaultCellEditor {
+        private JButton button;
+        private Long currentDocId;
+
+        public ButtonEditor(JCheckBox checkBox) {
+            super(checkBox);
+            button = new JButton();
+            button.setOpaque(true);
+            button.setMargin(new Insets(0,0,0,0));
+            button.setFocusable(false);
+            button.addActionListener(e -> {
+                // Hiển thị menu ngay trên nút; không dừng editing trước để tránh invoker chưa hiển thị
+                SwingUtilities.invokeLater(() -> showWorkflowMenu(button, currentDocId));
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            button.setText("▼");
+            Object idVal = model.getValueAt(row, 0);
+            currentDocId = (idVal instanceof Number) ? ((Number) idVal).longValue() : Long.parseLong(String.valueOf(idVal));
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() { return button.getText(); }
+    }
+
+    private void showWorkflowMenu(Component invoker, long docId) {
+        JPopupMenu menu = new JPopupMenu();
+        Role currentRole = authService.getCurrentUser().role();
+        if (currentRole == Role.VAN_THU) {
+            JMenuItem m1 = new JMenuItem("1) Tiếp nhận");
+            m1.addActionListener(e -> { selectRowById(docId); doTiepNhan(); });
+            JMenuItem m2 = new JMenuItem("2) Đăng ký");
+            m2.addActionListener(e -> { selectRowById(docId); doWorkflowAction("DANG_KY"); });
+            JMenuItem m3 = new JMenuItem("3) Trình lãnh đạo");
+            m3.addActionListener(e -> { selectRowById(docId); doWorkflowAction("TRINH_LANH_DAO"); });
+            menu.add(m1); menu.add(m2); menu.add(m3);
+        } else if (currentRole == Role.LANH_DAO) {
+            JMenuItem m4 = new JMenuItem("4) Chỉ đạo xử lý");
+            m4.addActionListener(e -> { selectRowById(docId); doWorkflowAction("CHI_DAO_XU_LY"); });
+            JMenuItem m6 = new JMenuItem("6) Xét duyệt");
+            m6.addActionListener(e -> { selectRowById(docId); doWorkflowAction("XET_DUYET"); });
+            menu.add(m4); menu.add(m6);
+        } else if (currentRole == Role.CAN_BO_CHUYEN_MON) {
+            JMenuItem m5 = new JMenuItem("5) Thực hiện xử lý");
+            m5.addActionListener(e -> { selectRowById(docId); doWorkflowAction("THUC_HIEN_XU_LY"); });
+            menu.add(m5);
+        }
+        if (!invoker.isShowing()) {
+            // fallback: hiển thị tương đối tại (0,0) của bảng để tránh IllegalComponentStateException
+            Component fallback = table;
+            menu.show(fallback, 10, 10);
+        } else {
+            menu.show(invoker, 0, invoker.getHeight());
+        }
+    }
+
+    private void selectRowById(long docId) {
+        for (int i = 0; i < model.getRowCount(); i++) {
+            Object v = model.getValueAt(i, 0);
+            long id = (v instanceof Number) ? ((Number) v).longValue() : Long.parseLong(String.valueOf(v));
+            if (id == docId) {
+                table.getSelectionModel().setSelectionInterval(i, i);
+                break;
+            }
+        }
+    }
 
     public static void main(String[] args) throws Exception {
         SwingUtilities.invokeLater(() -> {

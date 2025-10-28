@@ -36,8 +36,16 @@ public final class DocumentRepository {
                     "doc_year INT,\n" +
                     "deadline TIMESTAMPTZ,\n" +
                     "assigned_to TEXT,\n" +
-                    "priority TEXT DEFAULT 'NORMAL'\n" +
+                    "priority TEXT DEFAULT 'NORMAL',\n" +
+                    "note TEXT\n" +
                     ")");
+            
+            // Add note column if it doesn't exist (for existing databases)
+            try {
+                st.executeUpdate("ALTER TABLE documents ADD COLUMN IF NOT EXISTS note TEXT");
+            } catch (SQLException e) {
+                // Ignore if column already exists
+            }
 
             st.executeUpdate("CREATE TABLE IF NOT EXISTS document_versions (\n" +
                     "id BIGSERIAL PRIMARY KEY,\n" +
@@ -116,7 +124,7 @@ public final class DocumentRepository {
                 long id = rs.getLong(1);
                 return new Document(id, doc.title(), doc.createdAt(), doc.latestFileId(), doc.state(),
                                   doc.classification(), doc.securityLevel(), doc.docNumber(), doc.docYear(),
-                                  doc.deadline(), doc.assignedTo(), doc.priority());
+                                  doc.deadline(), doc.assignedTo(), doc.priority(), doc.note());
             }
         }
     }
@@ -132,7 +140,9 @@ public final class DocumentRepository {
     }
 
     public List<Document> list() throws SQLException {
-        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year, deadline, assigned_to, priority FROM documents ORDER BY created_at DESC";
+        String sql = "SELECT d.id, d.title, d.created_at, d.latest_file_id, d.state, d.classification, d.security_level, d.doc_number, d.doc_year, d.deadline, d.assigned_to, d.priority, " +
+                     "COALESCE(d.note, (SELECT al.note FROM audit_logs al WHERE al.document_id = d.id ORDER BY al.at DESC LIMIT 1)) AS note " +
+                     "FROM documents d ORDER BY d.created_at DESC";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             try (var rs = ps.executeQuery()) {
                 List<Document> out = new ArrayList<>();
@@ -150,8 +160,9 @@ public final class DocumentRepository {
                     OffsetDateTime deadline = deadlineTs != null ? deadlineTs.toInstant().atOffset(ZoneOffset.UTC) : null;
                     String assignedTo = rs.getString("assigned_to");
                     String priority = rs.getString("priority");
+                    String note = rs.getString("note");
                     OffsetDateTime odt = ts.toInstant().atOffset(ZoneOffset.UTC);
-                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority));
+                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority, note));
                 }
                 return out;
             }
@@ -209,7 +220,9 @@ public final class DocumentRepository {
     }
 
     public Document getById(long id) throws SQLException {
-        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year, deadline, assigned_to, priority FROM documents WHERE id = ?";
+        String sql = "SELECT d.id, d.title, d.created_at, d.latest_file_id, d.state, d.classification, d.security_level, d.doc_number, d.doc_year, d.deadline, d.assigned_to, d.priority, " +
+                     "COALESCE(d.note, (SELECT al.note FROM audit_logs al WHERE al.document_id = d.id ORDER BY al.at DESC LIMIT 1)) AS note " +
+                     "FROM documents d WHERE d.id = ?";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (var rs = ps.executeQuery()) {
@@ -228,13 +241,16 @@ public final class DocumentRepository {
                 OffsetDateTime deadline = deadlineTs != null ? deadlineTs.toInstant().atOffset(ZoneOffset.UTC) : null;
                 String assignedTo = rs.getString("assigned_to");
                 String priority = rs.getString("priority");
-                return new Document(did, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority);
+                String note = rs.getString("note");
+                return new Document(did, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority, note);
             }
         }
     }
 
     public List<Document> searchByTitle(String keyword) throws SQLException {
-        String sql = "SELECT id, title, created_at, latest_file_id, state, classification, security_level, doc_number, doc_year, deadline, assigned_to, priority FROM documents WHERE title ILIKE ? ORDER BY created_at DESC";
+        String sql = "SELECT d.id, d.title, d.created_at, d.latest_file_id, d.state, d.classification, d.security_level, d.doc_number, d.doc_year, d.deadline, d.assigned_to, d.priority, " +
+                     "COALESCE(d.note, (SELECT al.note FROM audit_logs al WHERE al.document_id = d.id ORDER BY al.at DESC LIMIT 1)) AS note " +
+                     "FROM documents d WHERE d.title ILIKE ? ORDER BY d.created_at DESC";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
             ps.setString(1, "%" + keyword + "%");
             try (var rs = ps.executeQuery()) {
@@ -254,7 +270,8 @@ public final class DocumentRepository {
                     OffsetDateTime deadline = deadlineTs != null ? deadlineTs.toInstant().atOffset(ZoneOffset.UTC) : null;
                     String assignedTo = rs.getString("assigned_to");
                     String priority = rs.getString("priority");
-                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority));
+                    String note = rs.getString("note");
+                    out.add(new Document(id, title, odt, fileId, DocState.valueOf(state), classification, securityLevel, docNumber, docYear, deadline, assignedTo, priority, note));
                 }
                 return out;
             }

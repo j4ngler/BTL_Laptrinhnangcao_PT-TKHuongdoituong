@@ -58,6 +58,8 @@ public class App implements Callable<Integer> {
     String setPasswordSpec;
     @Option(names = {"--list-users"}, description = "Liệt kê người dùng")
     boolean listUsers;
+    @Option(names = {"--approve-user"}, description = "Duyệt người dùng: <username>")
+    String approveUser;
     @Option(names = {"--reset-db"}, description = "Reset database (xóa và tạo lại tables)")
     boolean resetDb;
     
@@ -140,7 +142,7 @@ public class App implements Callable<Integer> {
                 System.out.println("Đã thêm văn bản: id=" + id);
                 return 0;
             }
-            if (addUserSpec != null || listUsers || setPasswordSpec != null) {
+            if (addUserSpec != null || listUsers || setPasswordSpec != null || approveUser != null) {
                 var ur = new UserRepository(config.dataSource);
                 ur.migrate();
                 if (addUserSpec != null) {
@@ -164,7 +166,12 @@ public class App implements Callable<Integer> {
                     return 0;
                 }
                 if (listUsers) {
-                    ur.list().forEach(u -> System.out.println(u.id() + "\t" + u.username() + "\t" + u.role()));
+                    ur.list().forEach(u -> System.out.println(u.id() + "\t" + u.username() + "\t" + u.role() + "\t" + (u.status()!=null?u.status():"")));
+                    return 0;
+                }
+                if (approveUser != null) {
+                    ur.approveUser(approveUser);
+                    System.out.println("Đã duyệt: " + approveUser);
                     return 0;
                 }
             }

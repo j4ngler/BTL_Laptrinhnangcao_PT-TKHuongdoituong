@@ -4,7 +4,8 @@ import java.time.OffsetDateTime;
 
 public final class Models {
     public enum Role { 
-        // 3 vai trò chính theo quy trình văn bản đến
+        // Vai trò hệ thống
+        QUAN_TRI,       // Quản trị hệ thống - toàn quyền
         VAN_THU,        // Văn thư - Tiếp nhận và đăng ký văn bản
         LANH_DAO,       // Lãnh đạo - Xem xét, chỉ đạo và phê duyệt
         CAN_BO_CHUYEN_MON  // Cán bộ chuyên môn - Thực hiện xử lý văn bản
@@ -23,12 +24,15 @@ public final class Models {
 
     public record Document(long id, String title, OffsetDateTime createdAt, String latestFileId, DocState state, 
                           String classification, String securityLevel, Integer docNumber, Integer docYear,
-                          OffsetDateTime deadline, String assignedTo, String priority) {}
+                          OffsetDateTime deadline, String assignedTo, String priority, String note) {}
 
     public record DocumentVersion(long id, long documentId, String fileId, int versionNo, OffsetDateTime createdAt) {}
 
     public record AuditLog(long id, long documentId, String action, String actor, OffsetDateTime at, String note) {}
 
-    public record User(long id, String username, String passwordHash, Role role) {}
+    public enum UserStatus { PENDING, APPROVED, REJECTED }
+
+    public record User(long id, String username, String passwordHash, Role role, String position, String organization,
+                       UserStatus status) {}
 }
 
