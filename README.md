@@ -1,4 +1,12 @@
-## Hệ thống quản lý văn bản đến (Java + PostgreSQL + MongoDB GridFS + Gmail Integration)
+# Hệ thống quản lý văn bản đến
+
+Ứng dụng Java Desktop (Swing) quản lý quy trình văn bản đến với tích hợp Gmail, phân quyền người dùng và Admin Dashboard.
+
+## Công nghệ sử dụng
+- Java 17+ (Swing GUI)
+- PostgreSQL (metadata và quản lý workflow)
+- MongoDB GridFS (lưu trữ file văn bản)
+- IMAP (tích hợp Gmail)
 
 ### Yêu cầu
 - Java 17+
@@ -44,11 +52,29 @@ java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --gui
 
 ### Thiết lập users mặc định
 ```powershell
-# Chạy script thiết lập users
+# Sử dụng PowerShell script hoặc CLI
 .\setup-users.ps1
 ```
 
+#### Hoặc tạo thủ công qua CLI:
+```powershell
+# Tạo tài khoản admin
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "admin:123456:QUAN_TRI"
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user admin
+
+# Tạo các tài khoản khác
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "vanthu:123:VAN_THU"
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "lanhdao:123:LANH_DAO"
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "canbo:123:CAN_BO_CHUYEN_MON"
+
+# Duyệt các tài khoản
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user vanthu
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user lanhdao
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user canbo
+```
+
 ### Các vai trò người dùng
+- **Quản trị (QUAN_TRI)**: Toàn quyền, quản lý người dùng, xem Dashboard tổng quan
 - **Văn thư (VAN_THU)**: Tiếp nhận và đăng ký văn bản từ email/bưu chính
 - **Lãnh đạo (LANH_DAO)**: Xem xét, chỉ đạo và phân công xử lý
 - **Cán bộ chuyên môn (CAN_BO_CHUYEN_MON)**: Thực hiện xử lý văn bản
@@ -62,12 +88,17 @@ java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --gui
 6. **HOAN_THANH** - Đã xử lý xong và báo cáo
 
 ### Tính năng chính
-- ✅ **Hệ thống đăng nhập** với xác thực mật khẩu
-- ✅ **Phân quyền theo vai trò** - mỗi vai trò có giao diện riêng
-- ✅ **Nhận văn bản từ Gmail** - tích hợp email tự động
-- ✅ **Workflow mới** phù hợp với quy trình văn bản đến
+- ✅ **Hệ thống đăng ký/đăng nhập** với xác thực mật khẩu (BCrypt)
+- ✅ **Phân quyền theo vai trò** - mỗi vai trò có giao diện và chức năng riêng
+- ✅ **Xét duyệt tài khoản** - Admin duyệt người dùng mới đăng ký
+- ✅ **Admin Dashboard** - Thống kê tổng quan: văn bản, người dùng, trạng thái
+- ✅ **Quản lý người dùng** - Duyệt/từ chối, xem danh sách (chức vụ, đơn vị)
+- ✅ **Nhận văn bản từ Gmail** - Tích hợp IMAP, tự động phân loại
+- ✅ **Workflow theo quy trình** - 6 bước từ tiếp nhận đến hoàn thành
+- ✅ **Ghi chú theo bước** - Mỗi bước xử lý có ghi chú riêng
 - ✅ **Tự động phân loại** văn bản theo từ khóa
 - ✅ **Xác định độ ưu tiên** và độ mật tự động
+- ✅ **Quản lý nhiều Gmail accounts** - Nhận văn bản từ nhiều tài khoản
 # hoặc chạy JAR đóng gói kèm phụ thuộc
 java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --help
 
