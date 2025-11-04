@@ -59,38 +59,54 @@ public final class WorkflowService {
     }
 
     /**
-     * Bước 4: Lãnh đạo chỉ đạo xử lý (từ CHO_XEM_XET -> DA_PHAN_CONG)
+     * Bước 4: Cục trưởng/Phó Cục trưởng chỉ đạo xử lý (từ CHO_XEM_XET -> DA_PHAN_CONG)
+     * Phân công đơn vị chủ trì/phối hợp
      */
     public void chiDaoXuLy(long id, String actor, String assignedTo, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
         if (d.state() != DocState.CHO_XEM_XET) throw new IllegalStateException("Chỉ chỉ đạo sau khi trình");
-        ensureRole(actor, Role.LANH_DAO);
+        ensureRole(actor, Role.LANH_DAO_CAP_TREN);
         repo.updateAssignedTo(id, assignedTo);
         repo.updateState(id, DocState.DA_PHAN_CONG);
-        repo.addAudit(id, "CHI_DAO_XU_LY", actor, "Chỉ đạo xử lý cho: " + assignedTo + ". " + note);
+        repo.addAudit(id, "CHI_DAO_XU_LY", actor, "Chỉ đạo xử lý cho đơn vị: " + assignedTo + ". " + note);
     }
 
     /**
-     * Bước 5: Cán bộ chuyên môn thực hiện xử lý (từ DA_PHAN_CONG -> DANG_XU_LY -> CHO_DUYET)
+     * Bước 4b: Lãnh đạo phòng phân công cho cán bộ (từ DA_PHAN_CONG -> DANG_XU_LY)
+     * Sau khi Cục trưởng phân công đơn vị, Lãnh đạo phòng phân công cho cán bộ cụ thể
+     */
+    public void phanCongCanBo(long id, String actor, String assignedTo, String note) throws SQLException {
+        var d = repo.getById(id);
+        if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
+        if (d.state() != DocState.DA_PHAN_CONG) throw new IllegalStateException("Chỉ phân công cán bộ sau khi được chỉ đạo");
+        ensureRole(actor, Role.LANH_DAO_PHONG);
+        repo.updateAssignedTo(id, assignedTo);
+        repo.updateState(id, DocState.DANG_XU_LY);
+        repo.addAudit(id, "PHAN_CONG_CAN_BO", actor, "Phân công cho cán bộ: " + assignedTo + ". " + note);
+    }
+
+    /**
+     * Bước 5: Cán bộ chuyên môn thực hiện xử lý (từ DANG_XU_LY -> CHO_DUYET)
      */
     public void thucHienXuLy(long id, String actor, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
-        if (d.state() != DocState.DA_PHAN_CONG) throw new IllegalStateException("Chỉ thực hiện sau khi được phân công");
+        if (d.state() != DocState.DANG_XU_LY) throw new IllegalStateException("Chỉ thực hiện sau khi được phân công");
         ensureRole(actor, Role.CAN_BO_CHUYEN_MON);
         repo.updateState(id, DocState.CHO_DUYET);
         repo.addAudit(id, "THUC_HIEN_XU_LY", actor, note);
     }
 
     /**
-     * Bước 6: Lãnh đạo xét duyệt (từ CHO_DUYET -> HOAN_THANH)
+     * Bước 6: Lãnh đạo phòng xét duyệt (từ CHO_DUYET -> HOAN_THANH)
+     * Lãnh đạo phòng duyệt kết quả xử lý của cán bộ
      */
     public void xetDuyet(long id, String actor, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
         if (d.state() != DocState.CHO_DUYET) throw new IllegalStateException("Chỉ duyệt sau khi cán bộ xử lý xong");
-        ensureRole(actor, Role.LANH_DAO);
+        ensureRole(actor, Role.LANH_DAO_PHONG);
         repo.updateState(id, DocState.HOAN_THANH);
         repo.addAudit(id, "XET_DUYET", actor, note);
     }

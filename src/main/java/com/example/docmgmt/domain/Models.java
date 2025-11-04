@@ -5,10 +5,12 @@ import java.time.OffsetDateTime;
 public final class Models {
     public enum Role { 
         // Vai trò hệ thống
-        QUAN_TRI,       // Quản trị hệ thống - toàn quyền
-        VAN_THU,        // Văn thư - Tiếp nhận và đăng ký văn bản
-        LANH_DAO,       // Lãnh đạo - Xem xét, chỉ đạo và phê duyệt
-        CAN_BO_CHUYEN_MON  // Cán bộ chuyên môn - Thực hiện xử lý văn bản
+        QUAN_TRI,              // Quản trị hệ thống - toàn quyền
+        VAN_THU,               // Văn thư - Tiếp nhận và đăng ký văn bản
+        LANH_DAO_CAP_TREN,     // Cục trưởng/Phó Cục trưởng - Chỉ đạo, phân công đơn vị
+        LANH_DAO_PHONG,        // Lãnh đạo phòng (Lãnh đạo Văn phòng/Phòng chuyên môn) - Chỉ đạo cán bộ, duyệt
+        CHANH_VAN_PHONG,       // Chánh Văn phòng - Giám sát, đôn đốc, báo cáo
+        CAN_BO_CHUYEN_MON      // Cán bộ chuyên môn - Thực hiện xử lý văn bản
     }
     public enum DocState { 
         // Quy trình văn bản đến theo ảnh workflow

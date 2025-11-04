@@ -79,7 +79,9 @@ public class AuthenticationService {
         return switch (role) {
             case QUAN_TRI -> "Quản trị";
             case VAN_THU -> "Văn thư";
-            case LANH_DAO -> "Lãnh đạo";
+            case LANH_DAO_CAP_TREN -> "Cục trưởng/Phó Cục trưởng";
+            case LANH_DAO_PHONG -> "Lãnh đạo phòng";
+            case CHANH_VAN_PHONG -> "Chánh Văn phòng";
             case CAN_BO_CHUYEN_MON -> "Cán bộ chuyên môn";
         };
     }
