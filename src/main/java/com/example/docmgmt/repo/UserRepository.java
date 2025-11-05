@@ -15,6 +15,24 @@ public final class UserRepository {
     public UserRepository(DataSource ds) {
         this.ds = ds;
     }
+    
+    /**
+     * Parse Role từ string, hỗ trợ migration từ LANH_DAO cũ sang LANH_DAO_CAP_TREN và LANH_DAO_PHONG
+     */
+    private Role parseRole(String roleStr) {
+        if (roleStr == null) {
+            throw new IllegalArgumentException("Role string cannot be null");
+        }
+        // Migration: Map LANH_DAO cũ sang LANH_DAO_CAP_TREN
+        if ("LANH_DAO".equals(roleStr)) {
+            return Role.LANH_DAO_CAP_TREN;
+        }
+        try {
+            return Role.valueOf(roleStr);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown role: " + roleStr, e);
+        }
+    }
 
     public void migrate() throws SQLException {
         try (var c = ds.getConnection(); var st = c.createStatement()) {
@@ -75,7 +93,7 @@ public final class UserRepository {
                 long id = rs.getLong("id");
                 String un = rs.getString("username");
                 String passwordHash = rs.getString("password_hash");
-                Role role = Role.valueOf(rs.getString("role"));
+                Role role = parseRole(rs.getString("role"));
                 String position = rs.getString("position");
                 String organization = rs.getString("organization");
                 UserStatus status = UserStatus.valueOf(rs.getString("status"));
@@ -91,7 +109,7 @@ public final class UserRepository {
             try (var rs = ps.executeQuery()) {
                 List<Role> roles = new ArrayList<>();
                 while (rs.next()) {
-                    roles.add(Role.valueOf(rs.getString("role")));
+                    roles.add(parseRole(rs.getString("role")));
                 }
                 return roles;
             }
@@ -108,7 +126,7 @@ public final class UserRepository {
                             rs.getLong("id"),
                             rs.getString("username"),
                             rs.getString("password_hash"),
-                            Role.valueOf(rs.getString("role")),
+                            parseRole(rs.getString("role")),
                             rs.getString("position"),
                             rs.getString("organization"),
                             UserStatus.valueOf(rs.getString("status"))
@@ -145,7 +163,7 @@ public final class UserRepository {
                             rs.getLong("id"),
                             rs.getString("username"),
                             rs.getString("password_hash"),
-                            Role.valueOf(rs.getString("role")),
+                            parseRole(rs.getString("role")),
                             rs.getString("position"),
                             rs.getString("organization"),
                             UserStatus.valueOf(rs.getString("status"))

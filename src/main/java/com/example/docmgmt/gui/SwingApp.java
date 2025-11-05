@@ -87,7 +87,8 @@ public class SwingApp {
         // Cập nhật title sau khi đăng nhập thành công
         frame.setTitle("Quản lý văn bản đến - " + authService.getCurrentUserRoleName());
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setSize(1000, 600);
+        // Set full màn hình (maximize)
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         // Dừng auto-sync khi đóng
         frame.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
@@ -165,11 +166,29 @@ public class SwingApp {
         // Restore menu bar và document view
         Role currentRole = authService.getCurrentUser().role();
         frame.setJMenuBar(buildMenuBar(currentRole));
+        
+        // Recreate topPanel để đảm bảo có đầy đủ listeners và references
+        topPanel = createTopPanel(currentRole);
+        
         frame.getContentPane().removeAll();
+        frame.getContentPane().setLayout(new BorderLayout());
         frame.getContentPane().add(topPanel, BorderLayout.NORTH);
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
+        
+        // Setup lại table renderers và editors nếu chưa có
+        int workflowColIndex = model.findColumn("Quy trình");
+        if (workflowColIndex >= 0) {
+            table.getColumnModel().getColumn(workflowColIndex).setCellRenderer(new ButtonRenderer());
+            table.getColumnModel().getColumn(workflowColIndex).setCellEditor(new ButtonEditor(new JCheckBox()));
+        }
+        
+        // Cấu hình lại độ rộng cột
+        configureColumnWidths();
+        
         frame.getContentPane().revalidate();
         frame.getContentPane().repaint();
+        
+        // Load dữ liệu
         reload();
     }
 
@@ -318,7 +337,9 @@ public class SwingApp {
         return switch (role) {
             case QUAN_TRI -> new Color(25, 42, 86);
             case VAN_THU -> new Color(34, 139, 34);
-            case LANH_DAO -> new Color(255, 152, 0);
+            case LANH_DAO_CAP_TREN -> new Color(255, 152, 0);
+            case LANH_DAO_PHONG -> new Color(255, 193, 7);
+            case CHANH_VAN_PHONG -> new Color(156, 39, 176);
             case CAN_BO_CHUYEN_MON -> new Color(33, 150, 243);
         };
     }

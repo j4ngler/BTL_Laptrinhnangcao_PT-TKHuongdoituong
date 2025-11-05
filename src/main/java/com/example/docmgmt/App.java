@@ -19,6 +19,24 @@ import java.util.concurrent.Callable;
 @Command(name = "docmgmt", mixinStandardHelpOptions = true, version = "0.1",
         description = "Quản lý văn bản: thêm, liệt kê, xuất (GridFS + PostgreSQL)")
 public class App implements Callable<Integer> {
+    
+    /**
+     * Parse Role từ string, hỗ trợ migration từ LANH_DAO cũ sang LANH_DAO_CAP_TREN và LANH_DAO_PHONG
+     */
+    private static Role parseRole(String roleStr) {
+        if (roleStr == null) {
+            throw new IllegalArgumentException("Role string cannot be null");
+        }
+        // Migration: Map LANH_DAO cũ sang LANH_DAO_CAP_TREN
+        if ("LANH_DAO".equals(roleStr)) {
+            return Role.LANH_DAO_CAP_TREN;
+        }
+        try {
+            return Role.valueOf(roleStr);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown role: " + roleStr + ". Valid roles: QUAN_TRI, VAN_THU, LANH_DAO_CAP_TREN, LANH_DAO_PHONG, CHANH_VAN_PHONG, CAN_BO_CHUYEN_MON", e);
+        }
+    }
 
     @Option(names = {"-a", "--add"}, description = "Thêm văn bản từ đường dẫn tệp")
     Path addFile;
@@ -148,7 +166,7 @@ public class App implements Callable<Integer> {
                 if (addUserSpec != null) {
                     var p = addUserSpec.split(":", 3);
                     if (p.length != 3) { System.err.println("Định dạng --add-user <username>:<password>:<role>"); return 1; }
-                    var role = Role.valueOf(p[2].toUpperCase());
+                    var role = parseRole(p[2].toUpperCase());
                     // Hash password trước khi lưu (không dùng BCrypt để tránh phụ thuộc)
                     String hashedPassword = com.example.docmgmt.service.PasswordUtil.hashPassword(p[1]);
                     long uid = ur.addUser(p[0], hashedPassword, role);
