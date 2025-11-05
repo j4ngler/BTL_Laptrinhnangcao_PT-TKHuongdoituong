@@ -30,10 +30,10 @@ if (-not $mvnCmd) {
     exit 1
 }
 
-# Thiet lap bien moi truong mac dinh (neu chua co)
-if (-not $env:PG_URL) { $env:PG_URL = "jdbc:postgresql://localhost:5432/docmgmt" }
-if (-not $env:PG_USER) { $env:PG_USER = "postgres" }
-if (-not $env:PG_PASS) { $env:PG_PASS = "postgres" }
+# Thiet lap bien moi truong mac dinh (luôn set lại để đảm bảo đúng)
+$env:PG_URL = "jdbc:postgresql://localhost:5432/docmgmt"
+$env:PG_USER = "postgres"
+$env:PG_PASS = "794613"
 if (-not $env:MONGO_URI) { $env:MONGO_URI = "mongodb://localhost:27017" }
 if (-not $env:MONGO_DB) { $env:MONGO_DB = "docmgmt" }
 if (-not $env:MONGO_BUCKET) { $env:MONGO_BUCKET = "files" }

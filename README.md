@@ -17,7 +17,7 @@
 ### Biến môi trường (có giá trị mặc định)
 - `PG_URL` (mặc định: `jdbc:postgresql://localhost:5432/docmgmt`)
 - `PG_USER` (mặc định: `postgres`)
-- `PG_PASS` (mặc định: `postgres`)
+- `PG_PASS` (mặc định: `794613`)
 - `MONGO_URI` (mặc định: `mongodb://localhost:27017`)
 - `MONGO_DB` (mặc định: `docmgmt`)
 - `MONGO_BUCKET` (mặc định: `files`)
