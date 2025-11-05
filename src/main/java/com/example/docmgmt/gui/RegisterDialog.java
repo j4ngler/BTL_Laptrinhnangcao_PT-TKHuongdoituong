@@ -34,7 +34,14 @@ public class RegisterDialog extends JDialog {
 
         usernameField = new JTextField(20);
         passwordField = new JPasswordField(20);
-        roleCombo = new JComboBox<>(new DefaultComboBoxModel<>(new Role[]{ Role.CAN_BO_CHUYEN_MON }));
+        // Cho phép chọn các vai trò (trừ QUAN_TRI)
+        roleCombo = new JComboBox<>(new DefaultComboBoxModel<>(new Role[]{
+            Role.VAN_THU,
+            Role.LANH_DAO_CAP_TREN,
+            Role.LANH_DAO_PHONG,
+            Role.CHANH_VAN_PHONG,
+            Role.CAN_BO_CHUYEN_MON
+        }));
         roleCombo.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -43,7 +50,9 @@ public class RegisterDialog extends JDialog {
                     String vn = switch (r) {
                         case QUAN_TRI -> "Quản trị";
                         case VAN_THU -> "Văn thư";
-                        case LANH_DAO -> "Lãnh đạo";
+                        case LANH_DAO_CAP_TREN -> "Cục trưởng/Phó Cục trưởng";
+                        case LANH_DAO_PHONG -> "Lãnh đạo phòng";
+                        case CHANH_VAN_PHONG -> "Chánh Văn phòng";
                         case CAN_BO_CHUYEN_MON -> "Cán bộ chuyên môn";
                     };
                     setText(vn);
@@ -52,7 +61,7 @@ public class RegisterDialog extends JDialog {
             }
         });
         roleCombo.setSelectedItem(Role.CAN_BO_CHUYEN_MON);
-        roleCombo.setEnabled(false); // khóa chọn vai trò, mặc định CB chuyên môn
+        roleCombo.setEnabled(true); // Cho phép chọn vai trò
         positionField = new JTextField(20);
         organizationField = new JTextField(20);
 

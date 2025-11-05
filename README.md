@@ -64,28 +64,35 @@ java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user admin
 
 # Tạo các tài khoản khác
 java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "vanthu:123:VAN_THU"
-java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "lanhdao:123:LANH_DAO"
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "cuctruong:123:LANH_DAO_CAP_TREN"
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "lanhdaophong:123:LANH_DAO_PHONG"
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "chanhvp:123:CHANH_VAN_PHONG"
 java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --add-user "canbo:123:CAN_BO_CHUYEN_MON"
 
 # Duyệt các tài khoản
 java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user vanthu
-java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user lanhdao
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user cuctruong
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user lanhdaophong
+java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user chanhvp
 java -jar target/docmgmt-0.1.0-jar-with-dependencies.jar --approve-user canbo
 ```
 
 ### Các vai trò người dùng
 - **Quản trị (QUAN_TRI)**: Toàn quyền, quản lý người dùng, xem Dashboard tổng quan
 - **Văn thư (VAN_THU)**: Tiếp nhận và đăng ký văn bản từ email/bưu chính
-- **Lãnh đạo (LANH_DAO)**: Xem xét, chỉ đạo và phân công xử lý
-- **Cán bộ chuyên môn (CAN_BO_CHUYEN_MON)**: Thực hiện xử lý văn bản
+- **Cục trưởng/Phó Cục trưởng (LANH_DAO_CAP_TREN)**: Chỉ đạo, phân công đơn vị chủ trì/phối hợp
+- **Lãnh đạo phòng (LANH_DAO_PHONG)**: Lãnh đạo Văn phòng/Phòng chuyên môn - Chỉ đạo cán bộ, đôn đốc, xét duyệt
+- **Chánh Văn phòng (CHANH_VAN_PHONG)**: Giám sát toàn bộ văn bản, đôn đốc tiến độ, báo cáo (chỉ xem, không xử lý trực tiếp)
+- **Cán bộ chuyên môn (CAN_BO_CHUYEN_MON)**: Thực hiện xử lý văn bản theo phân công
 
 ### Quy trình văn bản đến
 1. **TIEP_NHAN** - Văn thư nhận văn bản từ email/bưu chính
 2. **DANG_KY** - Văn thư đăng ký vào hệ thống
-3. **CHO_XEM_XET** - Trình lãnh đạo xem xét
-4. **DA_PHAN_CONG** - Lãnh đạo đã chỉ đạo xử lý
-5. **DANG_XU_LY** - Cán bộ chuyên môn đang thực hiện
-6. **HOAN_THANH** - Đã xử lý xong và báo cáo
+3. **CHO_XEM_XET** - Trình Cục trưởng/Phó Cục trưởng xem xét
+4. **DA_PHAN_CONG** - Cục trưởng/Phó Cục trưởng đã chỉ đạo, phân công đơn vị
+5. **DANG_XU_LY** - Lãnh đạo phòng phân công cho cán bộ, cán bộ đang xử lý
+6. **CHO_DUYET** - Cán bộ đã xử lý xong, chờ lãnh đạo phòng duyệt
+7. **HOAN_THANH** - Lãnh đạo phòng đã duyệt, hoàn thành
 
 ### Tính năng chính
 - ✅ **Hệ thống đăng ký/đăng nhập** với xác thực mật khẩu (BCrypt)
