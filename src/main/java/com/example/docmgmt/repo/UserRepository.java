@@ -127,6 +127,14 @@ public final class UserRepository {
         }
     }
 
+    public void rejectUser(String username) throws SQLException {
+        String sql = "UPDATE users SET status = 'REJECTED' WHERE username = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.executeUpdate();
+        }
+    }
+
     public List<User> listPending() throws SQLException {
         String sql = "SELECT id, username, password_hash, role, position, organization, status FROM users WHERE status = 'PENDING' ORDER BY id";
         try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {

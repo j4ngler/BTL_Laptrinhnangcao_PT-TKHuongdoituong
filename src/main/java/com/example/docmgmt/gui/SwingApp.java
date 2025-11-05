@@ -28,6 +28,9 @@ public class SwingApp {
     private DefaultTableModel model;
     private JTextField searchField;
     private JLabel userInfoLabel;
+    private JPanel topPanel;
+    private JScrollPane scrollPane;
+    private JButton btnDashboard;
 
     public SwingApp() throws Exception {
         System.out.println("Dang khoi tao SwingApp...");
@@ -95,25 +98,21 @@ public class SwingApp {
             }
         });
 
-        // Top panel chỉ hiển thị thông tin người dùng (các thao tác đưa vào Menu)
-        JPanel top = new JPanel(new BorderLayout());
+        // Top panel với header đẹp
+        Role currentRole = authService.getCurrentUser().role();
+        JPanel top = createTopPanel(currentRole);
         
-        // User info panel (right side)
-        JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        userInfoLabel = new JLabel("Người dùng: " + authService.getCurrentUser().username() + 
-                                  " (" + authService.getCurrentUserRoleName() + ")");
-        userInfoLabel.setFont(new Font("Arial", Font.BOLD, 12));
-        JButton btnLogout = new JButton("Đăng xuất");
-        btnLogout.setBackground(new Color(220, 20, 60));
-        btnLogout.setForeground(Color.WHITE);
-        userPanel.add(userInfoLabel);
-        userPanel.add(new JSeparator(SwingConstants.VERTICAL));
-        userPanel.add(btnLogout);
-        
-        // Add panels to top
-        top.add(userPanel, BorderLayout.EAST);
+        // Style table
+        styleTable(table);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane scroll = new JScrollPane(table);
+        
+        // Lưu reference để có thể restore
+        topPanel = top;
+        scrollPane = scroll;
+
+        // Set background cho frame
+        frame.getContentPane().setBackground(new Color(245, 247, 250));
 
         frame.getContentPane().add(top, BorderLayout.NORTH);
         frame.getContentPane().add(scroll, BorderLayout.CENTER);
@@ -134,10 +133,7 @@ public class SwingApp {
         });
         
         // Menu bar với các thao tác
-        Role currentRole = authService.getCurrentUser().role();
         frame.setJMenuBar(buildMenuBar(currentRole));
-        
-        btnLogout.addActionListener(e -> doLogout());
 
         // Nếu là admin, hiển thị Dashboard
         if (currentRole == Role.QUAN_TRI) {
@@ -153,7 +149,9 @@ public class SwingApp {
             var userRepo = new UserRepository(docService.getDataSource());
             userRepo.migrate();
             
-            AdminDashboard dashboard = new AdminDashboard(frame, docRepo, userRepo);
+            AdminDashboard dashboard = new AdminDashboard(frame, docRepo, userRepo, this::showDocumentView, this::doLogout);
+            // Ẩn menu bar khi hiển thị dashboard
+            frame.setJMenuBar(null);
             frame.getContentPane().removeAll();
             frame.getContentPane().add(dashboard, BorderLayout.CENTER);
             frame.getContentPane().revalidate();
@@ -162,7 +160,203 @@ public class SwingApp {
             showError(e);
         }
     }
+    
+    public void showDocumentView() {
+        // Restore menu bar và document view
+        Role currentRole = authService.getCurrentUser().role();
+        frame.setJMenuBar(buildMenuBar(currentRole));
+        frame.getContentPane().removeAll();
+        frame.getContentPane().add(topPanel, BorderLayout.NORTH);
+        frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
+        frame.getContentPane().revalidate();
+        frame.getContentPane().repaint();
+        reload();
+    }
 
+    private JPanel createTopPanel(Role currentRole) {
+        JPanel top = new JPanel(new BorderLayout());
+        top.setBackground(new Color(25, 42, 86));
+        top.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        
+        // Left panel với title và role info
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        leftPanel.setOpaque(false);
+        
+        JLabel iconLabel = new JLabel("■");
+        iconLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        iconLabel.setForeground(Color.WHITE);
+        
+        JLabel titleLabel = new JLabel("QUẢN LÝ VĂN BẢN ĐẾN");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        titleLabel.setForeground(Color.WHITE);
+        
+        // Role badge
+        String roleName = authService.getCurrentUserRoleName();
+        Color roleColor = getRoleColor(currentRole);
+        JLabel roleLabel = new JLabel(roleName);
+        roleLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        roleLabel.setForeground(Color.WHITE);
+        roleLabel.setBackground(roleColor);
+        roleLabel.setOpaque(true);
+        roleLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(255, 255, 255, 150), 1),
+            BorderFactory.createEmptyBorder(5, 12, 5, 12)
+        ));
+        
+        leftPanel.add(iconLabel);
+        leftPanel.add(titleLabel);
+        leftPanel.add(Box.createHorizontalStrut(20));
+        leftPanel.add(roleLabel);
+        
+        // Dashboard button (chỉ cho admin)
+        if (currentRole == Role.QUAN_TRI) {
+            btnDashboard = new JButton("Dashboard");
+            btnDashboard.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            btnDashboard.setBackground(new Color(34, 139, 34));
+            btnDashboard.setForeground(Color.WHITE);
+            btnDashboard.setBorderPainted(false);
+            btnDashboard.setFocusPainted(false);
+            btnDashboard.setPreferredSize(new Dimension(140, 35));
+            btnDashboard.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btnDashboard.addActionListener(e -> showAdminDashboard());
+            btnDashboard.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseEntered(java.awt.event.MouseEvent e) {
+                    btnDashboard.setBackground(new Color(24, 129, 24));
+                }
+                @Override
+                public void mouseExited(java.awt.event.MouseEvent e) {
+                    btnDashboard.setBackground(new Color(34, 139, 34));
+                }
+            });
+            leftPanel.add(Box.createHorizontalStrut(10));
+            leftPanel.add(btnDashboard);
+        }
+        
+        // Right panel với search, user info và logout
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.setOpaque(false);
+        
+        // Search field với placeholder
+        if (searchField == null) {
+            searchField = new JTextField(20);
+        } else {
+            searchField.setText(""); // Clear any existing text
+        }
+        String searchPlaceholder = "Tìm kiếm văn bản...";
+        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(255, 255, 255, 100), 2),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        searchField.setBackground(new Color(255, 255, 255, 200));
+        searchField.setText(searchPlaceholder);
+        searchField.setForeground(new Color(150, 150, 150));
+        searchField.setToolTipText(searchPlaceholder);
+        
+        searchField.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (searchField.getText().equals(searchPlaceholder)) {
+                    searchField.setText("");
+                    searchField.setForeground(new Color(33, 37, 41));
+                }
+            }
+            
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (searchField.getText().trim().isEmpty()) {
+                    searchField.setText(searchPlaceholder);
+                    searchField.setForeground(new Color(150, 150, 150));
+                }
+            }
+        });
+        
+        searchField.addActionListener(e -> {
+            if (!searchField.getText().equals(searchPlaceholder)) {
+                doSearch();
+            }
+        });
+        
+        rightPanel.add(searchField);
+        
+        // User info
+        userInfoLabel = new JLabel(authService.getCurrentUser().username());
+        userInfoLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        userInfoLabel.setForeground(Color.WHITE);
+        rightPanel.add(userInfoLabel);
+        
+        // Logout button
+        JButton btnLogout = new JButton("Đăng xuất");
+        btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnLogout.setBackground(new Color(220, 20, 60));
+        btnLogout.setForeground(Color.WHITE);
+        btnLogout.setBorderPainted(false);
+        btnLogout.setFocusPainted(false);
+        btnLogout.setPreferredSize(new Dimension(110, 35));
+        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnLogout.addActionListener(e -> doLogout());
+        btnLogout.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btnLogout.setBackground(new Color(200, 0, 40));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btnLogout.setBackground(new Color(220, 20, 60));
+            }
+        });
+        rightPanel.add(btnLogout);
+        
+        top.add(leftPanel, BorderLayout.WEST);
+        top.add(rightPanel, BorderLayout.EAST);
+        
+        return top;
+    }
+    
+    private Color getRoleColor(Role role) {
+        return switch (role) {
+            case QUAN_TRI -> new Color(25, 42, 86);
+            case VAN_THU -> new Color(34, 139, 34);
+            case LANH_DAO -> new Color(255, 152, 0);
+            case CAN_BO_CHUYEN_MON -> new Color(33, 150, 243);
+        };
+    }
+    
+    private void styleTable(JTable table) {
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.setRowHeight(35);
+        table.setSelectionBackground(new Color(30, 144, 255));
+        table.setSelectionForeground(Color.WHITE);
+        table.setGridColor(new Color(230, 230, 230));
+        table.setShowGrid(true);
+        
+        // Header styling
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        table.getTableHeader().setBackground(new Color(25, 42, 86));
+        table.getTableHeader().setForeground(Color.WHITE);
+        table.getTableHeader().setPreferredSize(new Dimension(0, 40));
+        table.getTableHeader().setReorderingAllowed(false);
+        
+        // Alternating row colors
+        table.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, 
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    if (row % 2 == 0) {
+                        setBackground(Color.WHITE);
+                    } else {
+                        setBackground(new Color(250, 250, 250));
+                    }
+                }
+                setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+                return this;
+            }
+        });
+    }
+    
     private void configureColumnWidths() {
         // ID
         int colId = model.findColumn("ID");
