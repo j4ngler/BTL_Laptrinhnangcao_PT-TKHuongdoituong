@@ -364,10 +364,6 @@ public class LoginDialog extends JDialog {
         try {
             if (authService.login(username, password)) {
                 loginSuccess = true;
-                JOptionPane.showMessageDialog(this, 
-                    "Đăng nhập thành công!\nVai trò: " + authService.getCurrentUserRoleName(), 
-                    "Thành công", 
-                    JOptionPane.INFORMATION_MESSAGE);
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(this, 

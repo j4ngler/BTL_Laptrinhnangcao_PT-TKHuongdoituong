@@ -4,12 +4,15 @@ import com.example.docmgmt.domain.Models.Document;
 import com.example.docmgmt.domain.Models.DocState;
 import com.example.docmgmt.repo.DocumentRepository;
 import com.example.docmgmt.repo.GridFsRepository;
+import com.example.docmgmt.repo.PendingEmailRepository;
 import com.example.docmgmt.config.Config;
 
 import javax.mail.*;
 import javax.mail.internet.*;
 import java.io.ByteArrayInputStream;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -17,16 +20,21 @@ import java.util.Properties;
  * Sử dụng javax.mail để kết nối Gmail thực tế
  */
 public class EmailService {
-    private final DocumentRepository docRepo;
     private final GridFsRepository gridFsRepo;
+    private final PendingEmailRepository pendingEmailRepo;
     private final String gmailHost = "imap.gmail.com";
     private final String gmailPort = "993";
     private final Config config; // Sử dụng Config chung thay vì tạo mới
 
     public EmailService(DocumentRepository docRepo, GridFsRepository gridFsRepo, Config config) {
-        this.docRepo = docRepo;
         this.gridFsRepo = gridFsRepo;
         this.config = config;
+        this.pendingEmailRepo = new PendingEmailRepository(config.dataSource);
+        try {
+            pendingEmailRepo.migrate(); // Tạo bảng pending_emails
+        } catch (Exception e) {
+            System.err.println("Lỗi tạo bảng pending_emails: " + e.getMessage());
+        }
         createProcessedEmailsTable(); // Tạo bảng processed_emails nếu chưa có
     }
 
@@ -78,7 +86,7 @@ public class EmailService {
     }
 
     /**
-     * Xử lý từng email
+     * Xử lý từng email - Lưu vào pending_emails thay vì tạo document ngay
      */
     private boolean processEmail(Message message) {
         try {
@@ -95,17 +103,21 @@ public class EmailService {
             }
 
             if (isDocumentEmail(subject, from)) {
-                Document doc = createDocumentFromEmail(message);
-                if (doc != null) {
-                    // Luu Message-ID de tranh trung lap
-                    saveProcessedEmailId(messageId, doc.id());
-                    docRepo.insert(doc);
-                    System.out.println("Da tao van ban: " + doc.title());
+                // Lưu email vào pending_emails để chờ xác nhận
+                String emailContent = extractEmailContent(message);
+                String[] attachmentFileIds = saveEmailAttachments(message);
+                
+                long pendingId = pendingEmailRepo.add(messageId, subject, from, emailContent, attachmentFileIds);
+                if (pendingId > 0) {
+                    System.out.println("Da luu email vao danh sach cho xac nhan: " + subject);
                     return true;
+                } else {
+                    System.out.println("Email da ton tai trong danh sach cho xac nhan: " + messageId);
                 }
             }
         } catch (Exception e) {
             System.err.println("Loi xu ly email: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -150,18 +162,18 @@ public class EmailService {
     }
 
     /**
-     * Tạo document từ email
+     * Tạo document từ pending email (khi được approve) với phân loại do người dùng chọn
      */
-    private Document createDocumentFromEmail(Message message) {
+    public Document createDocumentFromPendingEmail(PendingEmailRepository.PendingEmail pendingEmail,
+                                                   String classification, String securityLevel, String priority) {
         try {
-            String subject = message.getSubject();
-            String from = InternetAddress.toString(message.getFrom());
-            String priority = determinePriority(subject, from);
-            String classification = determineClassification(subject);
-            String securityLevel = determineSecurityLevel(subject, from);
+            String subject = pendingEmail.subject();
+            String[] attachmentFileIds = pendingEmail.attachmentFileIds();
             
-            // Lưu attachments vào GridFS
-            String fileId = saveEmailAttachments(message);
+            // Lấy file ID đầu tiên làm latest_file_id (hoặc null nếu không có)
+            String fileId = (attachmentFileIds != null && attachmentFileIds.length > 0) 
+                ? attachmentFileIds[0] 
+                : null;
             
             Document doc = new Document(
                 0, // ID sẽ được tạo bởi database
@@ -169,116 +181,107 @@ public class EmailService {
                 OffsetDateTime.now(),
                 fileId,
                 DocState.TIEP_NHAN,
-                classification,
-                securityLevel,
+                classification != null ? classification : "Khác",
+                securityLevel != null ? securityLevel : "Thường",
                 null, // Doc number
                 null, // Doc year
                 null, // Deadline
                 null, // Assigned to
-                priority,
+                priority != null ? priority : "NORMAL",
                 null  // Note
             );
             
             return doc;
         } catch (Exception e) {
-            System.err.println("Lỗi tạo document từ email: " + e.getMessage());
+            System.err.println("Lỗi tạo document từ pending email: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
 
-    /**
-     * Xác định độ ưu tiên
-     */
-    private String determinePriority(String subject, String from) {
-        if (subject == null) return "NORMAL";
-        
-        String lowerSubject = subject.toLowerCase();
-        
-        if (lowerSubject.contains("khẩn cấp") || lowerSubject.contains("thượng khẩn") ||
-            lowerSubject.contains("hỏa tốc") || lowerSubject.contains("urgent")) {
-            return "EMERGENCY";
-        }
-        
-        if (lowerSubject.contains("khẩn") || lowerSubject.contains("gấp")) {
-            return "URGENT";
-        }
-        
-        return "NORMAL";
-    }
 
     /**
-     * Xác định phân loại
+     * Lưu tất cả attachments vào GridFS và trả về mảng file IDs
      */
-    private String determineClassification(String subject) {
-        if (subject == null) return "Khác";
-        
-        String lowerSubject = subject.toLowerCase();
-        
-        if (lowerSubject.contains("quyết định")) return "Quyết định";
-        if (lowerSubject.contains("thông báo")) return "Thông báo";
-        if (lowerSubject.contains("công văn")) return "Công văn";
-        if (lowerSubject.contains("báo cáo")) return "Báo cáo";
-        if (lowerSubject.contains("nghị quyết")) return "Nghị quyết";
-        if (lowerSubject.contains("chỉ thị")) return "Chỉ thị";
-        if (lowerSubject.contains("tờ trình")) return "Tờ trình";
-        if (lowerSubject.contains("đề án")) return "Đề án";
-        if (lowerSubject.contains("kế hoạch")) return "Kế hoạch";
-        
-        return "Khác";
-    }
-
-    /**
-     * Xác định độ mật
-     */
-    private String determineSecurityLevel(String subject, String from) {
-        if (subject == null) return "Thường";
-        
-        String lowerSubject = subject.toLowerCase();
-        
-        if (lowerSubject.contains("mật") || lowerSubject.contains("bí mật") ||
-            lowerSubject.contains("tuyệt mật")) {
-            return "Mật";
-        }
-        
-        if (lowerSubject.contains("nội bộ") || lowerSubject.contains("hạn chế")) {
-            return "Hạn chế";
-        }
-        
-        return "Thường";
-    }
-
-    /**
-     * Lưu attachments vào GridFS
-     */
-    private String saveEmailAttachments(Message message) {
+    private String[] saveEmailAttachments(Message message) {
+        List<String> fileIds = new ArrayList<>();
         try {
-            Multipart multipart = (Multipart) message.getContent();
+            Object content = message.getContent();
             
-            for (int i = 0; i < multipart.getCount(); i++) {
-                BodyPart bodyPart = multipart.getBodyPart(i);
-                Part part = bodyPart;
+            if (content instanceof Multipart) {
+                Multipart multipart = (Multipart) content;
                 
-                if (part.getFileName() != null && !part.getFileName().isEmpty()) {
-                    // Lưu attachment
-                    try (ByteArrayInputStream bis = new ByteArrayInputStream(
-                            bodyPart.getInputStream().readAllBytes())) {
-                        return gridFsRepo.saveFile(part.getFileName(), bis);
+                for (int i = 0; i < multipart.getCount(); i++) {
+                    BodyPart bodyPart = multipart.getBodyPart(i);
+                    Part part = bodyPart;
+                    
+                    if (part.getFileName() != null && !part.getFileName().isEmpty()) {
+                        // Lưu attachment
+                        try (ByteArrayInputStream bis = new ByteArrayInputStream(
+                                bodyPart.getInputStream().readAllBytes())) {
+                            String fileId = gridFsRepo.saveFile(part.getFileName(), bis);
+                            fileIds.add(fileId);
+                            System.out.println("Da luu attachment: " + part.getFileName() + " -> " + fileId);
+                        }
+                    } else if (bodyPart.getContentType() != null && 
+                               bodyPart.getContentType().toLowerCase().startsWith("text/")) {
+                        // Lưu email body nếu là text
+                        String body = bodyPart.getContent().toString();
+                        if (body != null && !body.trim().isEmpty()) {
+                            String fileName = "email_body_" + System.currentTimeMillis() + ".txt";
+                            try (ByteArrayInputStream bis = new ByteArrayInputStream(body.getBytes())) {
+                                String fileId = gridFsRepo.saveFile(fileName, bis);
+                                fileIds.add(fileId);
+                            }
+                        }
                     }
                 }
-            }
-            
-            // Nếu không có attachment, lưu email body
-            String body = message.getContent().toString();
-            if (body != null && !body.trim().isEmpty()) {
-                String fileName = "email_body_" + System.currentTimeMillis() + ".txt";
-                try (ByteArrayInputStream bis = new ByteArrayInputStream(body.getBytes())) {
-                    return gridFsRepo.saveFile(fileName, bis);
+            } else {
+                // Nếu không có attachment, lưu email body
+                String body = content.toString();
+                if (body != null && !body.trim().isEmpty()) {
+                    String fileName = "email_body_" + System.currentTimeMillis() + ".txt";
+                    try (ByteArrayInputStream bis = new ByteArrayInputStream(body.getBytes())) {
+                        String fileId = gridFsRepo.saveFile(fileName, bis);
+                        fileIds.add(fileId);
+                    }
                 }
             }
         } catch (Exception e) {
             System.err.println("Lỗi lưu attachments: " + e.getMessage());
+            e.printStackTrace();
         }
-        return null;
+        return fileIds.isEmpty() ? null : fileIds.toArray(new String[0]);
+    }
+    
+    /**
+     * Trích xuất nội dung email (text body)
+     */
+    private String extractEmailContent(Message message) {
+        try {
+            Object content = message.getContent();
+            
+            if (content instanceof Multipart) {
+                Multipart multipart = (Multipart) content;
+                StringBuilder body = new StringBuilder();
+                
+                for (int i = 0; i < multipart.getCount(); i++) {
+                    BodyPart bodyPart = multipart.getBodyPart(i);
+                    
+                    if (bodyPart.getContentType() != null && 
+                        bodyPart.getContentType().toLowerCase().startsWith("text/")) {
+                        body.append(bodyPart.getContent().toString()).append("\n");
+                    }
+                }
+                
+                return body.toString().trim();
+            } else {
+                return content.toString();
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi trích xuất nội dung email: " + e.getMessage());
+            return "";
+        }
     }
 
     /**
@@ -370,7 +373,7 @@ public class EmailService {
     /**
      * Lưu Message-ID của email đã xử lý
      */
-    private void saveProcessedEmailId(String messageId, long documentId) {
+    public void saveProcessedEmailId(String messageId, long documentId) {
         try {
             String sql = "INSERT INTO processed_emails (message_id, document_id, processed_at) VALUES (?, ?, NOW())";
             try (var conn = config.dataSource.getConnection();

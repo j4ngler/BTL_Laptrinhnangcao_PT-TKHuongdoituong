@@ -51,6 +51,16 @@ public final class GridFsRepository implements AutoCloseable {
         return id.toHexString();
     }
 
+    /**
+     * Đọc nội dung file từ GridFS dưới dạng String
+     */
+    public String readFileAsString(String hexId) throws IOException {
+        ObjectId id = new ObjectId(hexId);
+        try (var stream = bucket().openDownloadStream(id)) {
+            return new String(stream.readAllBytes());
+        }
+    }
+
     @Override
     public void close() {
         // no-op (client managed by Config)

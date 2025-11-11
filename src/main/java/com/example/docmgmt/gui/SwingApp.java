@@ -22,6 +22,7 @@ public class SwingApp {
     private final WorkflowService workflowService;
     private final AuthenticationService authService;
     private final com.example.docmgmt.service.EmailService emailService;
+    private com.example.docmgmt.service.PendingEmailService pendingEmailService;
     private com.example.docmgmt.service.SimpleMultiGmailManager autoSyncManager;
     private JFrame frame;
     private JTable table;
@@ -50,6 +51,11 @@ public class SwingApp {
             var gridRepo = new com.example.docmgmt.repo.GridFsRepository(config.mongoClient, "docmgmt", "files");
             // Ưu tiên EmailService (IMAP thật) nếu khả dụng, fallback simple
             this.emailService = new com.example.docmgmt.service.EmailService(repo, gridRepo, config);
+            // Khởi tạo PendingEmailService
+            var pendingEmailRepo = new com.example.docmgmt.repo.PendingEmailRepository(config.dataSource);
+            pendingEmailRepo.migrate();
+            this.pendingEmailService = new com.example.docmgmt.service.PendingEmailService(
+                pendingEmailRepo, repo, this.emailService, gridRepo);
             // Auto-sync Gmail: load accounts từ DB và chạy nền nếu có
             try {
                 var gaRepo = new com.example.docmgmt.repo.GmailAccountRepository(config.dataSource);
@@ -489,6 +495,9 @@ public class SwingApp {
         JMenuItem miFetch = new JMenuItem("Nhận từ Gmail...");
         miFetch.addActionListener(e -> doEmail());
         menuEmail.add(miFetch);
+        JMenuItem miPending = new JMenuItem("Email chờ xác nhận...");
+        miPending.addActionListener(e -> showPendingEmails());
+        menuEmail.add(miPending);
         JMenuItem miManage = new JMenuItem("Quản lý accounts...");
         miManage.addActionListener(e -> {
             try {
@@ -1200,6 +1209,21 @@ public class SwingApp {
             worker.execute();
             progressDialog.setVisible(true);
             
+        } catch (Exception e) {
+            showError(e);
+        }
+    }
+
+    /**
+     * Hiển thị dialog email chờ xác nhận
+     */
+    private void showPendingEmails() {
+        try {
+            String currentUser = authService.getCurrentUser().username();
+            PendingEmailsDialog dialog = new PendingEmailsDialog(frame, pendingEmailService, currentUser);
+            dialog.setVisible(true);
+            // Reload danh sách văn bản sau khi đóng dialog (có thể đã tạo văn bản mới)
+            reload();
         } catch (Exception e) {
             showError(e);
         }
