@@ -68,6 +68,22 @@ public final class DocumentService implements AutoCloseable {
         return docRepo.getDataSource();
     }
 
+    /**
+     * Xóa văn bản và tất cả các file liên quan
+     */
+    public void deleteDocument(long docId) throws SQLException {
+        // Lấy danh sách tất cả fileId trước khi xóa
+        var fileIds = docRepo.getAllFileIds(docId);
+        
+        // Xóa văn bản từ database (các bảng liên quan sẽ tự động xóa do CASCADE)
+        docRepo.delete(docId);
+        
+        // Xóa các file từ GridFS
+        for (String fileId : fileIds) {
+            fsRepo.delete(fileId);
+        }
+    }
+
     @Override
     public void close() {
         // no-op, resources managed externally

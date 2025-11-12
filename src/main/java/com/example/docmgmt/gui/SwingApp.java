@@ -258,9 +258,124 @@ public class SwingApp {
             leftPanel.add(btnDashboard);
         }
         
-        // Right panel với search, user info và logout
+        // Right panel với các nút thao tác, search, user info và logout
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightPanel.setOpaque(false);
+        
+        // Các nút thao tác
+        JButton btnRefresh = new JButton("Làm mới");
+        btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnRefresh.setBackground(new Color(30, 144, 255));
+        btnRefresh.setForeground(Color.WHITE);
+        btnRefresh.setBorderPainted(false);
+        btnRefresh.setFocusPainted(false);
+        btnRefresh.setPreferredSize(new Dimension(100, 35));
+        btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnRefresh.addActionListener(e -> reload());
+        btnRefresh.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btnRefresh.setBackground(new Color(20, 134, 245));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btnRefresh.setBackground(new Color(30, 144, 255));
+            }
+        });
+        
+        JButton btnSearch = new JButton("Tìm kiếm...");
+        btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnSearch.setBackground(new Color(30, 144, 255));
+        btnSearch.setForeground(Color.WHITE);
+        btnSearch.setBorderPainted(false);
+        btnSearch.setFocusPainted(false);
+        btnSearch.setPreferredSize(new Dimension(120, 35));
+        btnSearch.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSearch.addActionListener(e -> doSearchInput());
+        btnSearch.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btnSearch.setBackground(new Color(20, 134, 245));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btnSearch.setBackground(new Color(30, 144, 255));
+            }
+        });
+        
+        JButton btnAdd = new JButton("Thêm văn bản...");
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnAdd.setBackground(new Color(34, 139, 34));
+        btnAdd.setForeground(Color.WHITE);
+        btnAdd.setBorderPainted(false);
+        btnAdd.setFocusPainted(false);
+        btnAdd.setPreferredSize(new Dimension(140, 35));
+        btnAdd.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAdd.addActionListener(e -> doAdd());
+        btnAdd.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btnAdd.setBackground(new Color(24, 129, 24));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btnAdd.setBackground(new Color(34, 139, 34));
+            }
+        });
+        
+        JButton btnExport = new JButton("Xuất...");
+        btnExport.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnExport.setBackground(new Color(255, 152, 0));
+        btnExport.setForeground(Color.WHITE);
+        btnExport.setBorderPainted(false);
+        btnExport.setFocusPainted(false);
+        btnExport.setPreferredSize(new Dimension(100, 35));
+        btnExport.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnExport.addActionListener(e -> doExport());
+        btnExport.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btnExport.setBackground(new Color(245, 142, 0));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btnExport.setBackground(new Color(255, 152, 0));
+            }
+        });
+        
+        JButton btnDelete = new JButton("Xóa");
+        btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnDelete.setBackground(new Color(220, 20, 60));
+        btnDelete.setForeground(Color.WHITE);
+        btnDelete.setBorderPainted(false);
+        btnDelete.setFocusPainted(false);
+        btnDelete.setPreferredSize(new Dimension(100, 35));
+        btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnDelete.addActionListener(e -> {
+            Long id = selectedId();
+            if (id != null) {
+                doDelete(id);
+            } else {
+                info("Chọn một dòng trước");
+            }
+        });
+        btnDelete.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btnDelete.setBackground(new Color(200, 0, 40));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btnDelete.setBackground(new Color(220, 20, 60));
+            }
+        });
+        
+        rightPanel.add(btnRefresh);
+        rightPanel.add(btnSearch);
+        rightPanel.add(btnAdd);
+        rightPanel.add(btnExport);
+        rightPanel.add(btnDelete);
+        rightPanel.add(Box.createHorizontalStrut(10));
         
         // Search field với placeholder
         if (searchField == null) {
@@ -415,31 +530,6 @@ public class SwingApp {
 
     private JMenuBar buildMenuBar(Role currentRole) {
         JMenuBar menuBar = new JMenuBar();
-        
-        JMenu menuFile = new JMenu("Tệp");
-        JMenuItem miAdd = new JMenuItem("Thêm văn bản...");
-        JMenuItem miExport = new JMenuItem("Xuất...");
-        JMenuItem miDetails = new JMenuItem("Chi tiết");
-        JMenuItem miExit = new JMenuItem("Thoát");
-        miAdd.addActionListener(e -> doAdd());
-        miExport.addActionListener(e -> doExport());
-        miDetails.addActionListener(e -> doDetails());
-        miExit.addActionListener(e -> frame.dispose());
-        menuFile.add(miAdd);
-        menuFile.add(miExport);
-        menuFile.add(miDetails);
-        menuFile.addSeparator();
-        menuFile.add(miExit);
-        menuBar.add(menuFile);
-        
-        JMenu menuActions = new JMenu("Thao tác");
-        JMenuItem miRefresh = new JMenuItem("Làm mới");
-        JMenuItem miSearch = new JMenuItem("Tìm kiếm...");
-        miRefresh.addActionListener(e -> reload());
-        miSearch.addActionListener(e -> doSearchInput());
-        menuActions.add(miRefresh);
-        menuActions.add(miSearch);
-        menuBar.add(menuActions);
         
         JMenu menuWorkflow = new JMenu("Quy trình");
         if (currentRole == Role.QUAN_TRI || currentRole == Role.VAN_THU) {
@@ -603,6 +693,31 @@ public class SwingApp {
             docService.exportDocument(id, out.toPath());
             info("Đã xuất");
         } catch (Exception ex) { showError(ex); }
+    }
+
+    private void doDelete(long docId) {
+        try {
+            // Lấy thông tin văn bản để hiển thị trong dialog xác nhận
+            var doc = docService.getDocumentById(docId);
+            String title = doc != null ? doc.title() : "ID: " + docId;
+            
+            // Xác nhận xóa
+            int result = JOptionPane.showConfirmDialog(
+                frame,
+                "Bạn có chắc chắn muốn xóa văn bản:\n\"" + title + "\"?\n\nHành động này không thể hoàn tác!",
+                "Xác nhận xóa văn bản",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            
+            if (result == JOptionPane.YES_OPTION) {
+                docService.deleteDocument(docId);
+                info("Đã xóa văn bản thành công");
+                reload();
+            }
+        } catch (Exception ex) {
+            showError(ex);
+        }
     }
 
     private void doDetails() {
@@ -1263,35 +1378,45 @@ public class SwingApp {
         String actor = authService.getCurrentUser().username();
         
         try {
+            // Lấy trạng thái hiện tại của văn bản để hiển thị trong thông báo lỗi
+            var doc = docService.getDocumentById(docId);
+            String currentState = doc != null ? getStateDisplayName(doc.state().name()) : "Không xác định";
+            
             switch (action) {
                 case "DANG_KY":
                     String note1 = JOptionPane.showInputDialog(frame, "Ghi chú đăng ký:", "Đăng ký văn bản", JOptionPane.QUESTION_MESSAGE);
+                    if (note1 == null) return; // Người dùng hủy
                     workflowService.dangKy(docId, actor, note1);
                     break;
                 case "TRINH_LANH_DAO":
                     String note2 = JOptionPane.showInputDialog(frame, "Ghi chú trình lãnh đạo:", "Trình lãnh đạo", JOptionPane.QUESTION_MESSAGE);
+                    if (note2 == null) return; // Người dùng hủy
                     workflowService.trinhLanhDao(docId, actor, note2);
                     break;
                 case "CHI_DAO_XU_LY":
                     String assignedTo = JOptionPane.showInputDialog(frame, "Phân công cho ai:", "Chỉ đạo xử lý", JOptionPane.QUESTION_MESSAGE);
                     if (assignedTo != null && !assignedTo.trim().isEmpty()) {
                         String note3 = JOptionPane.showInputDialog(frame, "Hướng dẫn xử lý:", "Chỉ đạo xử lý", JOptionPane.QUESTION_MESSAGE);
+                        if (note3 == null) return; // Người dùng hủy
                         workflowService.chiDaoXuLy(docId, actor, assignedTo, note3);
                     }
                     break;
                 case "THUC_HIEN_XU_LY":
                     String note4 = JOptionPane.showInputDialog(frame, "Báo cáo kết quả xử lý:", "Thực hiện xử lý", JOptionPane.QUESTION_MESSAGE);
+                    if (note4 == null) return; // Người dùng hủy
                     workflowService.thucHienXuLy(docId, actor, note4);
                     break;
                 case "PHAN_CONG_CAN_BO":
                     String assignedTo2 = JOptionPane.showInputDialog(frame, "Phân công cho cán bộ:", "Phân công cán bộ", JOptionPane.QUESTION_MESSAGE);
                     if (assignedTo2 != null && !assignedTo2.trim().isEmpty()) {
                         String note4b = JOptionPane.showInputDialog(frame, "Hướng dẫn xử lý:", "Phân công cán bộ", JOptionPane.QUESTION_MESSAGE);
+                        if (note4b == null) return; // Người dùng hủy
                         workflowService.phanCongCanBo(docId, actor, assignedTo2, note4b);
                     }
                     break;
                 case "XET_DUYET":
                     String note5 = JOptionPane.showInputDialog(frame, "Ghi chú duyệt:", "Xét duyệt", JOptionPane.QUESTION_MESSAGE);
+                    if (note5 == null) return; // Người dùng hủy
                     workflowService.xetDuyet(docId, actor, note5);
                     break;
             }
@@ -1299,6 +1424,22 @@ public class SwingApp {
             info("Thực hiện " + getActionDisplayName(action) + " thành công!");
             reload();
             
+        } catch (IllegalStateException e) {
+            // Hiển thị thông báo lỗi thân thiện hơn cho lỗi trạng thái
+            String currentState = "Không xác định";
+            try {
+                var doc = docService.getDocumentById(docId);
+                if (doc != null) {
+                    currentState = getStateDisplayName(doc.state().name());
+                }
+            } catch (Exception ex) {
+                // Nếu không lấy được trạng thái, giữ nguyên "Không xác định"
+            }
+            String message = e.getMessage() + "\n\nTrạng thái hiện tại của văn bản: " + currentState;
+            JOptionPane.showMessageDialog(frame, message, "Không thể thực hiện thao tác", JOptionPane.WARNING_MESSAGE);
+        } catch (SecurityException e) {
+            // Lỗi quyền truy cập
+            JOptionPane.showMessageDialog(frame, e.getMessage(), "Không có quyền thực hiện", JOptionPane.ERROR_MESSAGE);
         } catch (Exception e) {
             showError(e);
         }
@@ -1421,6 +1562,7 @@ public class SwingApp {
             menu.add(m4); menu.add(m4b); menu.add(m5); menu.add(m6);
         }
         // CHANH_VAN_PHONG: Không có menu xử lý (chỉ xem, giám sát)
+        
         if (!invoker.isShowing()) {
             // fallback: hiển thị tương đối tại (0,0) của bảng để tránh IllegalComponentStateException
             Component fallback = table;

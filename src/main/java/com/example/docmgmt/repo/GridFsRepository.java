@@ -61,6 +61,20 @@ public final class GridFsRepository implements AutoCloseable {
         }
     }
 
+    /**
+     * Xóa file từ GridFS
+     */
+    public void delete(String hexId) {
+        if (hexId == null || hexId.isEmpty()) return;
+        try {
+            ObjectId id = new ObjectId(hexId);
+            bucket().delete(id);
+        } catch (Exception e) {
+            // Log error nhưng không throw để tránh lỗi khi xóa file không tồn tại
+            System.err.println("Lỗi khi xóa file từ GridFS: " + e.getMessage());
+        }
+    }
+
     @Override
     public void close() {
         // no-op (client managed by Config)

@@ -371,6 +371,63 @@ public final class DocumentRepository {
                 ps.executeUpdate();
             }
         }
+     }
+
+    /**
+     * Lấy danh sách fileId của tất cả các phiên bản của văn bản
+     */
+    public List<String> getAllFileIds(long docId) throws SQLException {
+        String sql = "SELECT DISTINCT file_id FROM (" +
+                     "  SELECT file_id FROM document_versions WHERE document_id = ? " +
+                     "  UNION " +
+                     "  SELECT latest_file_id AS file_id FROM documents WHERE id = ? AND latest_file_id IS NOT NULL" +
+                     ") AS all_files WHERE file_id IS NOT NULL";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, docId);
+            ps.setLong(2, docId);
+            try (var rs = ps.executeQuery()) {
+                List<String> fileIds = new ArrayList<>();
+                while (rs.next()) {
+                    String fileId = rs.getString("file_id");
+                    if (fileId != null && !fileId.isEmpty()) {
+                        fileIds.add(fileId);
+                    }
+                }
+                return fileIds;
+            }
+        }
+    }
+
+    /**
+     * Xóa văn bản (các bảng liên quan sẽ tự động xóa do ON DELETE CASCADE)
+     */
+    public void delete(long id) throws SQLException {
+        String sql = "DELETE FROM documents WHERE id = ?";
+        try (var c = ds.getConnection(); var ps = c.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        }
+        
+        // Reset sequence về giá trị cao nhất hiện có
+        try (var c = ds.getConnection(); var st = c.createStatement()) {
+            // Kiểm tra xem bảng có còn dữ liệu không
+            var checkSql = "SELECT COUNT(*) FROM documents";
+            try (var rs = st.executeQuery(checkSql)) {
+                rs.next();
+                long count = rs.getLong(1);
+                
+                if (count == 0) {
+                    // Bảng rỗng: reset về 1 với true (đã sử dụng), nhưng thực tế sẽ làm lần tiếp theo là 2
+                    // Để lần tiếp theo là 1, ta cần set về 0, nhưng không thể. 
+                    // Giải pháp: set về 1 với false, nhưng PostgreSQL sẽ trả về 1 cho lần tiếp theo
+                    // Thực tế: chỉ cần set về 1 với false là đủ
+                    st.executeQuery("SELECT setval('documents_id_seq', 1, false)");
+                } else {
+                    // Bảng còn dữ liệu: reset về MAX(id) (với false để lần tiếp theo sẽ là MAX(id) + 1)
+                    st.executeQuery("SELECT setval('documents_id_seq', (SELECT MAX(id) FROM documents), false)");
+                }
+            }
+        }
     }
 }
 
