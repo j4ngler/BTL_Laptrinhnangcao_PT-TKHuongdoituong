@@ -15,6 +15,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
+import java.util.Locale;
 import java.util.List;
 
 public class SwingApp {
@@ -531,41 +532,6 @@ public class SwingApp {
     private JMenuBar buildMenuBar(Role currentRole) {
         JMenuBar menuBar = new JMenuBar();
         
-        JMenu menuWorkflow = new JMenu("Quy trình");
-        if (currentRole == Role.QUAN_TRI || currentRole == Role.VAN_THU) {
-            JMenuItem miTiepNhan = new JMenuItem("1) Tiếp nhận");
-            JMenuItem miDangKy = new JMenuItem("2) Đăng ký");
-            JMenuItem miTrinhLanhDao = new JMenuItem("3) Trình lãnh đạo");
-            miTiepNhan.addActionListener(e -> doTiepNhan());
-            miDangKy.addActionListener(e -> doWorkflowAction("DANG_KY"));
-            miTrinhLanhDao.addActionListener(e -> doWorkflowAction("TRINH_LANH_DAO"));
-            menuWorkflow.add(miTiepNhan);
-            menuWorkflow.add(miDangKy);
-            menuWorkflow.add(miTrinhLanhDao);
-        }
-        // Cục trưởng/Phó Cục trưởng: Chỉ đạo xử lý, phân công đơn vị
-        if (currentRole == Role.QUAN_TRI || currentRole == Role.LANH_DAO_CAP_TREN) {
-            JMenuItem miChiDao = new JMenuItem("4) Chỉ đạo xử lý");
-            miChiDao.addActionListener(e -> doWorkflowAction("CHI_DAO_XU_LY"));
-            menuWorkflow.add(miChiDao);
-        }
-        // Lãnh đạo phòng: Phân công cán bộ, xét duyệt
-        if (currentRole == Role.QUAN_TRI || currentRole == Role.LANH_DAO_PHONG) {
-            JMenuItem miPhanCongCanBo = new JMenuItem("4b) Phân công cán bộ");
-            JMenuItem miXetDuyet = new JMenuItem("6) Xét duyệt");
-            miPhanCongCanBo.addActionListener(e -> doWorkflowAction("PHAN_CONG_CAN_BO"));
-            miXetDuyet.addActionListener(e -> doWorkflowAction("XET_DUYET"));
-            menuWorkflow.add(miPhanCongCanBo);
-            menuWorkflow.add(miXetDuyet);
-        }
-        // Chánh Văn phòng: Chỉ xem, không có menu xử lý (giám sát, đôn đốc)
-        if (currentRole == Role.QUAN_TRI || currentRole == Role.CAN_BO_CHUYEN_MON) {
-            JMenuItem miThucHien = new JMenuItem("5) Thực hiện xử lý");
-            miThucHien.addActionListener(e -> doWorkflowAction("THUC_HIEN_XU_LY"));
-            menuWorkflow.add(miThucHien);
-        }
-        menuBar.add(menuWorkflow);
-
         // Menu Quản trị (chỉ hiển thị cho QUAN_TRI)
         if (currentRole == Role.QUAN_TRI) {
             JMenu menuAdmin = new JMenu("Quản trị");
@@ -674,8 +640,14 @@ public class SwingApp {
     private void doAdd() {
         try {
             JFileChooser fc = new JFileChooser();
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PDF Documents (*.pdf)", "pdf"));
+            fc.setAcceptAllFileFilterUsed(false);
             if (fc.showOpenDialog(frame) != JFileChooser.APPROVE_OPTION) return;
             File file = fc.getSelectedFile();
+            if (file == null || !file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                JOptionPane.showMessageDialog(frame, "Vui lòng chọn tệp PDF (.pdf) hợp lệ.", "Sai định dạng", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             String title = JOptionPane.showInputDialog(frame, "Nhập tiêu đề:", "Văn bản mới");
             if (title == null || title.isBlank()) return;
             long id = docService.createDocument(title, file.toPath());
@@ -1240,6 +1212,11 @@ public class SwingApp {
         }
         
         JTable historyTable = new JTable(data, columns);
+        historyTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        historyTable.getColumnModel().getColumn(0).setPreferredWidth(160);
+        historyTable.getColumnModel().getColumn(1).setPreferredWidth(120);
+        historyTable.getColumnModel().getColumn(2).setPreferredWidth(150);
+        historyTable.getColumnModel().getColumn(3).setPreferredWidth(400);
         historyTable.setEnabled(false);
         JScrollPane historyScroll = new JScrollPane(historyTable);
         historyScroll.setPreferredSize(new Dimension(0, 200));
@@ -1521,44 +1498,40 @@ public class SwingApp {
         JPopupMenu menu = new JPopupMenu();
         Role currentRole = authService.getCurrentUser().role();
         if (currentRole == Role.VAN_THU) {
-            JMenuItem m1 = new JMenuItem("1) Tiếp nhận");
-            m1.addActionListener(e -> { selectRowById(docId); doTiepNhan(); });
-            JMenuItem m2 = new JMenuItem("2) Đăng ký");
+            JMenuItem m2 = new JMenuItem("1) Đăng ký");
             m2.addActionListener(e -> { selectRowById(docId); doWorkflowAction("DANG_KY"); });
-            JMenuItem m3 = new JMenuItem("3) Trình lãnh đạo");
+            JMenuItem m3 = new JMenuItem("2) Trình lãnh đạo");
             m3.addActionListener(e -> { selectRowById(docId); doWorkflowAction("TRINH_LANH_DAO"); });
-            menu.add(m1); menu.add(m2); menu.add(m3);
+            menu.add(m2); menu.add(m3);
         } else if (currentRole == Role.LANH_DAO_CAP_TREN) {
-            JMenuItem m4 = new JMenuItem("4) Chỉ đạo xử lý");
+            JMenuItem m4 = new JMenuItem("1) Chỉ đạo xử lý");
             m4.addActionListener(e -> { selectRowById(docId); doWorkflowAction("CHI_DAO_XU_LY"); });
             menu.add(m4);
         } else if (currentRole == Role.LANH_DAO_PHONG) {
-            JMenuItem m4b = new JMenuItem("4b) Phân công cán bộ");
+            JMenuItem m4b = new JMenuItem("1) Phân công cán bộ");
             m4b.addActionListener(e -> { selectRowById(docId); doWorkflowAction("PHAN_CONG_CAN_BO"); });
-            JMenuItem m6 = new JMenuItem("6) Xét duyệt");
+            JMenuItem m6 = new JMenuItem("2) Xét duyệt");
             m6.addActionListener(e -> { selectRowById(docId); doWorkflowAction("XET_DUYET"); });
             menu.add(m4b); menu.add(m6);
         } else if (currentRole == Role.CAN_BO_CHUYEN_MON) {
-            JMenuItem m5 = new JMenuItem("5) Thực hiện xử lý");
+            JMenuItem m5 = new JMenuItem("1) Thực hiện xử lý");
             m5.addActionListener(e -> { selectRowById(docId); doWorkflowAction("THUC_HIEN_XU_LY"); });
             menu.add(m5);
         } else if (currentRole == Role.QUAN_TRI) {
             // QUAN_TRI có tất cả menu
-            JMenuItem m1 = new JMenuItem("1) Tiếp nhận");
-            m1.addActionListener(e -> { selectRowById(docId); doTiepNhan(); });
-            JMenuItem m2 = new JMenuItem("2) Đăng ký");
+            JMenuItem m2 = new JMenuItem("1) Đăng ký");
             m2.addActionListener(e -> { selectRowById(docId); doWorkflowAction("DANG_KY"); });
-            JMenuItem m3 = new JMenuItem("3) Trình lãnh đạo");
+            JMenuItem m3 = new JMenuItem("2) Trình lãnh đạo");
             m3.addActionListener(e -> { selectRowById(docId); doWorkflowAction("TRINH_LANH_DAO"); });
-            JMenuItem m4 = new JMenuItem("4) Chỉ đạo xử lý");
+            JMenuItem m4 = new JMenuItem("3) Chỉ đạo xử lý");
             m4.addActionListener(e -> { selectRowById(docId); doWorkflowAction("CHI_DAO_XU_LY"); });
-            JMenuItem m4b = new JMenuItem("4b) Phân công cán bộ");
+            JMenuItem m4b = new JMenuItem("4) Phân công cán bộ");
             m4b.addActionListener(e -> { selectRowById(docId); doWorkflowAction("PHAN_CONG_CAN_BO"); });
             JMenuItem m5 = new JMenuItem("5) Thực hiện xử lý");
             m5.addActionListener(e -> { selectRowById(docId); doWorkflowAction("THUC_HIEN_XU_LY"); });
             JMenuItem m6 = new JMenuItem("6) Xét duyệt");
             m6.addActionListener(e -> { selectRowById(docId); doWorkflowAction("XET_DUYET"); });
-            menu.add(m1); menu.add(m2); menu.add(m3);
+            menu.add(m2); menu.add(m3);
             menu.add(m4); menu.add(m4b); menu.add(m5); menu.add(m6);
         }
         // CHANH_VAN_PHONG: Không có menu xử lý (chỉ xem, giám sát)

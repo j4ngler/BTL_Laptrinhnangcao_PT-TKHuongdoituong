@@ -51,14 +51,24 @@ public class EmailConfigDialog extends JDialog {
         // Email
         gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.EAST;
         mainPanel.add(new JLabel("Email Gmail:"), gbc);
-        gbc.gridx = 1; gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridx = 1; 
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
         mainPanel.add(emailField, gbc);
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
         
         // Password
         gbc.gridx = 0; gbc.gridy = 1; gbc.anchor = GridBagConstraints.EAST;
         mainPanel.add(new JLabel("Mật khẩu ứng dụng:"), gbc);
-        gbc.gridx = 1; gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridx = 1; 
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
         mainPanel.add(passwordField, gbc);
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
         
         // Auto fetch
         gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.WEST;
@@ -88,7 +98,7 @@ public class EmailConfigDialog extends JDialog {
         // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout());
         JButton saveBtn = new JButton("Lưu cấu hình");
-        JButton testBtn = new JButton("Test kết nối");
+        JButton testBtn = new JButton("Kiểm tra kết nối");
         JButton cancelBtn = new JButton("Hủy");
         
         saveBtn.setBackground(new Color(70, 130, 180));

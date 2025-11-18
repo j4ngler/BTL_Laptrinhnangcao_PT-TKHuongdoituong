@@ -92,7 +92,9 @@ public final class WorkflowService {
     public void thucHienXuLy(long id, String actor, String note) throws SQLException {
         var d = repo.getById(id);
         if (d == null) throw new IllegalArgumentException("Không tìm thấy văn bản");
-        if (d.state() != DocState.DANG_XU_LY) throw new IllegalStateException("Chỉ thực hiện sau khi được phân công");
+        if (d.state() != DocState.DANG_XU_LY && d.state() != DocState.DA_PHAN_CONG) {
+            throw new IllegalStateException("Chỉ thực hiện sau khi được phân công");
+        }
         ensureRole(actor, Role.CAN_BO_CHUYEN_MON);
         repo.updateState(id, DocState.CHO_DUYET);
         repo.addAudit(id, "THUC_HIEN_XU_LY", actor, note);
