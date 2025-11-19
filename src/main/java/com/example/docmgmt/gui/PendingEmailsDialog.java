@@ -150,7 +150,20 @@ public class PendingEmailsDialog extends JDialog {
             addActionListener(e -> loadPendingEmails());
         }});
         bottomPanel.add(new JButton("Đóng") {{
-            addActionListener(e -> dispose());
+            addActionListener(e -> {
+                try {
+                    int count = pendingEmailService.listPending().size();
+                    String message = count > 0 
+                        ? "Hiện có " + count + " email đang chờ xử lý."
+                        : "Không có email nào đang chờ xử lý.";
+                    JOptionPane.showMessageDialog(PendingEmailsDialog.this, message,
+                        "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                } catch (SQLException ex) {
+                    // Nếu có lỗi, vẫn đóng dialog
+                    System.err.println("Lỗi đếm email chờ xử lý: " + ex.getMessage());
+                }
+                dispose();
+            });
         }});
 
         // Add panels

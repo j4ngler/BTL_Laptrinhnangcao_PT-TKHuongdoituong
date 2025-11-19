@@ -114,6 +114,8 @@ public class EmailService {
                 } else {
                     System.out.println("Email da ton tai trong danh sach cho xac nhan: " + messageId);
                 }
+            } else {
+                System.out.println("Email khong phai van ban (bo qua): " + subject);
             }
         } catch (Exception e) {
             System.err.println("Loi xu ly email: " + e.getMessage());
@@ -134,7 +136,9 @@ public class EmailService {
         String[] keywords = {
             "văn bản", "công văn", "quyết định", "thông báo", "báo cáo",
             "nghị quyết", "chỉ thị", "tờ trình", "đề án", "kế hoạch",
-            "van ban", "cong van", "quyet dinh", "thong bao", "bao cao"
+            "thông tư", "quy định",
+            "van ban", "cong van", "quyet dinh", "thong bao", "bao cao",
+            "thong tu", "quy dinh"
         };
         
         for (String keyword : keywords) {
@@ -352,20 +356,33 @@ public class EmailService {
     }
 
     /**
-     * Kiểm tra email đã được xử lý chưa
+     * Kiểm tra email đã được xử lý chưa (kiểm tra cả pending_emails và processed_emails)
      */
     private boolean isEmailAlreadyProcessed(String messageId) {
         try {
-            String sql = "SELECT COUNT(*) FROM processed_emails WHERE message_id = ?";
+            // Kiểm tra cả trong pending_emails và processed_emails
+            String sql = """
+                SELECT COUNT(*) FROM (
+                    SELECT message_id FROM pending_emails WHERE message_id = ?
+                    UNION
+                    SELECT message_id FROM processed_emails WHERE message_id = ?
+                ) AS combined
+                """;
             try (var conn = config.dataSource.getConnection();
                  var stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, messageId);
+                stmt.setString(2, messageId);
                 try (var rs = stmt.executeQuery()) {
-                    return rs.next() && rs.getInt(1) > 0;
+                    boolean exists = rs.next() && rs.getInt(1) > 0;
+                    if (exists) {
+                        System.out.println("Email da ton tai (trong pending_emails hoac processed_emails): " + messageId);
+                    }
+                    return exists;
                 }
             }
         } catch (Exception e) {
             System.err.println("Loi kiem tra email da xu ly: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
